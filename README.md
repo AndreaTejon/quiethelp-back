@@ -1,12 +1,12 @@
 # quiethelp-back
-* * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 descripción
 
 Backend del proyecto QuietHelp.
 Se encarga de la lógica del sistema y de exponer una API REST para comunicarse con el frontend desarrollado en Flutter.
 
 
-* * * - - - - - - - - - - - - - - - - - - - - - - - * * *
+- - -
 
 tecnologías
 
@@ -18,7 +18,7 @@ tecnologías
 - Git / GitHub
 
 
-* * * - - - - - - - - - - - - - - - - - - - - - - - * * *
+- - -
 
 estructura básica
 - controller: endpoints REST
@@ -27,7 +27,7 @@ estructura básica
 - model: entidades
 - resources: configuración
 
-* * * - - - - - - - - - - - - - - - - - - - - - - - * * *
+- - -
 
 ejecución
 
@@ -35,7 +35,7 @@ ejecución
 - Por defecto se levanta en:
     http://localhost:8080
 
-* * * - - - - - - - - - - - - - - - - - - - - - - - * * *
+- - -
 
 autores
 
