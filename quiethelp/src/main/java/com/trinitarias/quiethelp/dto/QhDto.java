@@ -1,25 +1,20 @@
 package com.trinitarias.quiethelp.dto;
 
-import com.trinitarias.quiethelp.entity.QhEntity;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.trinitarias.quiethelp.entity.QhConversacionEntity;
 
 public class QhDto {
 	
-	private QhMensajeDto mensaje;
 	private QhEmisorDto emisor;
+	private QhConversacionDto conversacion;
 	
 	public QhDto() {}
 	
-	public QhDto(QhEmisorDto emisor, QhMensajeDto mensaje) {
+	public QhDto(QhEmisorDto emisor, QhConversacionDto conversacion) {
 		this.emisor = emisor;
-		this.mensaje = mensaje;
-	}
-
-	public QhMensajeDto getMensaje() {
-		return mensaje;
-	}
-
-	public void setMensaje(QhMensajeDto mensaje) {
-		this.mensaje = mensaje;
+		this.conversacion = conversacion;
 	}
 
 	public QhEmisorDto getEmisor() {
@@ -30,12 +25,56 @@ public class QhDto {
 		this.emisor = emisor;
 	}
 	
-	public QhDto fromEntityToDto (QhEntity et) {
+	public QhConversacionDto getConversacion() {
+		return conversacion;
+	}
+
+	public void setConversacion(QhConversacionDto conversacion) {
+		this.conversacion = conversacion;
+	}
+
+	public static QhDto fromEntityToDto(QhConversacionEntity entity) {
 		QhDto dto = new QhDto();
-		emisor.setCurso(et.getCurso());
-		emisor.setGrupo(et.getGrupo());
-		emisor.setTarjeta(et.getTarjeta());
-		mensaje.setMensaje(et.getMensaje());
+		
+		// 1. CREAR EMISOR DTO (datos del alumno)
+		QhEmisorDto emisorDto = new QhEmisorDto();
+		emisorDto.setCurso(entity.getCurso());
+		emisorDto.setGrupo(entity.getGrupo());
+		emisorDto.setTarjeta(entity.getTarjeta());
+		emisorDto.setFecha(entity.getFechaEnvio());
+		emisorDto.setUrgente(entity.isUrgente());
+		
+		// 2. CREAR CONVERSACION DTO
+		QhConversacionDto conversacionDto = new QhConversacionDto();
+		conversacionDto.setId(String.valueOf(entity.getId()));
+		conversacionDto.setEstado(entity.getEstado());
+		conversacionDto.setRevisorId(entity.getRevisorId());
+		conversacionDto.setRevisorNombre(entity.getRevisorNombre());
+		conversacionDto.setFechaInicio(entity.getFechaRecibido());
+		conversacionDto.setFechaAsignacion(entity.getFechaAsignacion());
+		conversacionDto.setFechaResolucion(entity.getFechaResolucion());
+		
+		// 3. MAPEAR MENSAJES (si existen)
+		if (entity.getMensajes() != null && !entity.getMensajes().isEmpty()) {
+			List<QhMensajeDto> mensajesDto = entity.getMensajes().stream()
+				.map(msg -> {
+					QhMensajeDto msgDto = new QhMensajeDto();
+					msgDto.setId(String.valueOf(msg.getId()));
+					msgDto.setEmisor(msg.getEmisor());
+					msgDto.setMensaje(msg.getContenido());
+					msgDto.setLeido(msg.isLeido());
+					msgDto.setFecha(msg.getFecha());
+					return msgDto;
+				})
+				.collect(Collectors.toList());
+			
+			conversacionDto.setMensajes(mensajesDto);
+		}
+		
+		// 4. ASIGNAR AMBOS AL DTO
+		dto.setEmisor(emisorDto);
+		dto.setConversacion(conversacionDto);
+		
 		return dto;
 	}
 }
