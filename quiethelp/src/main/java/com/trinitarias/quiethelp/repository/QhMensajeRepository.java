@@ -18,4 +18,7 @@ public interface QhMensajeRepository extends JpaRepository<QhMensajeEntity, Long
     // Marcar mensajes como leídos
     @Query("UPDATE QhMensajeEntity m SET m.leido = true WHERE m.conversacion.id = :conversacionId AND m.emisor = 'profesor'")
     void marcarMensajesProfesorComoLeidos(@Param("conversacionId") Long conversacionId);
+    
+    @Query("UPDATE QhMensajeEntity m SET m.leido = true WHERE m.conversacion.id = :conversacionId AND m.emisor = 'alumno'")
+    void marcarMensajesAlumnoComoLeidos(@Param("conversacionId") Long conversacionId);
 }

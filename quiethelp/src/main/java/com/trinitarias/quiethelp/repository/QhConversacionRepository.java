@@ -23,6 +23,9 @@ public interface QhConversacionRepository extends JpaRepository<QhConversacionEn
     // Contar por estado (para las cards de resumen)
     long countByEstado(String estado);
     
+    // Contar po urgente
+    long countByUrgenteTrue();
+    
     // Query personalizada para dashboard con filtros múltiples
     @Query("SELECT c FROM QhConversacionEntity c WHERE " +
            "(:estado IS NULL OR c.estado = :estado) AND " +
