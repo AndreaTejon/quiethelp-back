@@ -85,7 +85,7 @@ public class QhMensajeEntity {
         QhMensajeEntity entity = new QhMensajeEntity();
         
         entity.setConversacion(conversacion);
-        entity.setEmisor(dto.getEmisor());
+        entity.setEmisor(dto.getEmisor() != null ? dto.getEmisor() : "alumno");
         entity.setContenido(dto.getMensaje());
         entity.setFecha(dto.getFecha() != null ? dto.getFecha() : LocalDateTime.now().toString());
         entity.setLeido(dto.isLeido());
