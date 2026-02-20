@@ -1,15 +1,34 @@
 package com.trinitarias.quiethelp.service;
 
+//Fecha
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
+//Colecciones
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+//Concurrencia
+import java.util.concurrent.CompletableFuture;
+
+//Streams
 import java.util.stream.Collectors;
 
+//Spring
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
+//HTTP
+import org.springframework.http.HttpEntity;      // Para la petición completa
+import org.springframework.http.HttpHeaders;    // Para las cabeceras
+import org.springframework.http.MediaType;      // Para application/json
+
+//Dtos y Entities
 import com.trinitarias.quiethelp.dto.QhDashboardResumenDto;
 import com.trinitarias.quiethelp.dto.QhDto;
 import com.trinitarias.quiethelp.dto.QhMensajeDto;
@@ -27,22 +46,50 @@ public class QhService {
 	@Autowired
 	private QhMensajeRepository mensajeRepository;
 	
+	@Autowired
+	private RestTemplate restTemplate; //CLiente HTTp
+	
+	@Value("${n8n.webhook.url}")
+	private String n8nUrl;
+	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	
 	/* Crear converasción -- mensaje de alumno*/
 	@Transactional
 	public QhDto crearConversacion(QhDto dto) {
+		// 1. Guarda en Supabase
 		QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto); //Crear conversación
-		
-		QhConversacionEntity conversacionGuardada = conversacionRepository.save(conversacion);
-		
+		QhConversacionEntity guardada = conversacionRepository.save(conversacion);
+		/*
 		if(dto.getConversacion() != null && dto.getConversacion().getMensajes() != null && !dto.getConversacion().getMensajes().isEmpty()) {
 		
 			QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
-			QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, conversacionGuardada);
+			QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
 			mensajeRepository.save(mensaje);
 		}
-		return QhDto.fromEntityToDto(conversacionGuardada);
+		return QhDto.fromEntityToDto(guardada);*/
+		// 2. Enviar a N8N
+		CompletableFuture.runAsync(()-> {
+			try {
+				Map<String, Object> payload = new HashMap<>();
+				payload.put("conversacionId", guardada.getId());
+                payload.put("mensajeOriginal", dto.getConversacion().getMensajes().get(0).getMensaje());
+                
+                //Petición HTTP
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                
+                HttpEntity<Map<String,Object>> request = new HttpEntity<>(payload,headers);
+                
+                //LLamada a N8N
+                restTemplate.postForObject(n8nUrl, request, String.class);
+                
+			} catch (Exception e) {
+				System.err.println("Error al anonimizar: " + e.getMessage());
+			}
+		});
+		
+		return QhDto.fromEntityToDto(guardada);
 	}
 	
 	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/
@@ -109,6 +156,26 @@ public class QhService {
 			conversacionRepository.save(conversacion);
 		}
 		
+		// Enviar a N8N para anonimizar
+	    CompletableFuture.runAsync(() -> {
+	        try {
+	            Map<String, Object> payload = new HashMap<>();
+	            payload.put("conversacionId", id);
+	            payload.put("mensajeOriginal", contenido);
+	            payload.put("emisor", "profesor");
+	            
+	            HttpHeaders headers = new HttpHeaders();
+	            headers.setContentType(MediaType.APPLICATION_JSON);
+	            
+	            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+	            
+	            restTemplate.postForObject(n8nUrl, request, String.class);
+	            
+	        } catch (Exception e) {
+	            System.err.println("Error al anonimizar respuesta: " + e.getMessage());
+	        }
+	    });
+	    
 		return QhDto.fromEntityToDto(conversacion);
 	}
 	
