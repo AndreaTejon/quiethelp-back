@@ -1,16 +1,15 @@
 package com.trinitarias.quiethelp.dto;
 
 public class QhEmisorDto {
-	private String curso, grupo, tarjeta, fecha;
+	private String curso, grupo, tarjeta;
 	private boolean urgente;
 	
 	public QhEmisorDto() {}
 
-	public QhEmisorDto(String curso, String grupo, String tarjeta, String fecha) {
+	public QhEmisorDto(String curso, String grupo, String tarjeta) {
 		this.curso = curso;
 		this.grupo = grupo;
 		this.tarjeta = tarjeta;
-		this.fecha = fecha;
 	}
 	
 	public String getCurso() {
@@ -36,15 +35,7 @@ public class QhEmisorDto {
 	public void setTarjeta(String tarjeta) {
 		this.tarjeta = tarjeta;
 	}
-	
-	public String getFecha() {
-		return fecha;
-	}
-	
-	public void setFecha(String fecha) {
-		this.fecha = fecha;
-	}
-	
+
 	public boolean isUrgente() {
 		return urgente;
 	}

@@ -1,11 +1,19 @@
 package com.trinitarias.quiethelp.entity;
 
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import com.trinitarias.quiethelp.dto.QhDto;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "conversaciones")
@@ -19,9 +27,9 @@ public class QhConversacionEntity {
     private String curso;
     private String grupo;
     private String tarjeta;        // Bullying, Académico, Emocional
-    private String fechaEnvio;      // Fecha que envió el alumno
     private boolean urgente;
-
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    
     // Primer mensaje (el texto inicial)
     @Column(length = 2000)
     private String mensajeInicial;
@@ -76,14 +84,6 @@ public class QhConversacionEntity {
 
     public void setTarjeta(String tarjeta) {
         this.tarjeta = tarjeta;
-    }
-
-    public String getFechaEnvio() {
-        return fechaEnvio;
-    }
-
-    public void setFechaEnvio(String fechaEnvio) {
-        this.fechaEnvio = fechaEnvio;
     }
 
     public boolean isUrgente() {
@@ -165,7 +165,6 @@ public class QhConversacionEntity {
         entity.setCurso(dto.getEmisor().getCurso());
         entity.setGrupo(dto.getEmisor().getGrupo());
         entity.setTarjeta(dto.getEmisor().getTarjeta());
-        entity.setFechaEnvio(dto.getEmisor().getFecha());
         entity.setUrgente(dto.getEmisor().isUrgente());
         
         // Primer mensaje (el texto)
@@ -177,7 +176,7 @@ public class QhConversacionEntity {
         
         // Estado inicial (lo pone el backend, no viene de Flutter)
         entity.setEstado("PENDIENTE");
-        entity.setFechaRecibido(LocalDateTime.now().toString());
+        entity.setFechaRecibido(LocalDateTime.now().format(formatter));
         
         return entity;
     }

@@ -41,7 +41,6 @@ public class QhDto {
 		emisorDto.setCurso(entity.getCurso());
 		emisorDto.setGrupo(entity.getGrupo());
 		emisorDto.setTarjeta(entity.getTarjeta());
-		emisorDto.setFecha(entity.getFechaEnvio());
 		emisorDto.setUrgente(entity.isUrgente());
 		
 		// 2. CREAR CONVERSACION DTO
