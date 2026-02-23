@@ -28,6 +28,9 @@ import org.springframework.http.HttpEntity;      // Para la petición completa
 import org.springframework.http.HttpHeaders;    // Para las cabeceras
 import org.springframework.http.MediaType;      // Para application/json
 
+// BBDD 
+import com.trinitarias.quiethelp.components.SupabaseClient;
+
 //Dtos y Entities
 import com.trinitarias.quiethelp.dto.QhDashboardResumenDto;
 import com.trinitarias.quiethelp.dto.QhDto;
@@ -52,6 +55,9 @@ public class QhService {
 	@Value("${n8n.webhook.url}")
 	private String n8nUrl;
 	
+    @Autowired
+    private SupabaseClient supabaseClient;
+	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	
 	/* Crear converasción -- mensaje de alumno*/
@@ -60,35 +66,36 @@ public class QhService {
 		// 1. Guarda en Supabase
 		QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto); //Crear conversación
 		QhConversacionEntity guardada = conversacionRepository.save(conversacion);
-		/*
-		if(dto.getConversacion() != null && dto.getConversacion().getMensajes() != null && !dto.getConversacion().getMensajes().isEmpty()) {
 		
-			QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
-			QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
-			mensajeRepository.save(mensaje);
-		}
-		return QhDto.fromEntityToDto(guardada);*/
-		// 2. Enviar a N8N
-		CompletableFuture.runAsync(()-> {
-			try {
-				Map<String, Object> payload = new HashMap<>();
-				payload.put("conversacionId", guardada.getId());
-                payload.put("mensajeOriginal", dto.getConversacion().getMensajes().get(0).getMensaje());
-                
-                //Petición HTTP
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                
-                HttpEntity<Map<String,Object>> request = new HttpEntity<>(payload,headers);
-                
-                //LLamada a N8N
-                restTemplate.postForObject(n8nUrl, request, String.class);
-                
-			} catch (Exception e) {
-				System.err.println("Error al anonimizar: " + e.getMessage());
-			}
-		});
+		// 2. Se guarda el primer mensaje
+		QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
 		
+		// 3. Guardar mensaje en BBDD
+	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
+	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
+		
+		// 4. Enviar a N8N
+	    CompletableFuture.runAsync(() -> {
+	        try {
+	            Map<String, Object> payload = new HashMap<>();
+	            payload.put("mensajeId", mensajeGuardado.getId()); // Mensaje a actualizar
+	            payload.put("conversacionId", guardada.getId());
+	            payload.put("contenidoOriginal", primerMensajeDto.getMensaje()); // Texto a anonimizar
+	            
+	            //Petición HTTP
+	            HttpHeaders headers = new HttpHeaders();
+	            headers.setContentType(MediaType.APPLICATION_JSON);
+	            
+	            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+	            
+	          //LLamada a N8
+	            restTemplate.postForObject(n8nUrl, request, String.class);
+	            
+	        } catch (Exception e) {
+	            System.err.println("Error al anonimizar: " + e.getMessage());
+	        }
+	    });
+
 		return QhDto.fromEntityToDto(guardada);
 	}
 	
@@ -99,10 +106,7 @@ public class QhService {
 		return conversaciones.stream().map(conv -> {
 				QhDto dto = QhDto.fromEntityToDto(conv);
 				//Se manda el primer mensaje
-	            if (dto.getConversacion() != null && 
-	                    dto.getConversacion().getMensajes() != null && 
-	                    !dto.getConversacion().getMensajes().isEmpty()) {
-	                    
+	            if (dto.getConversacion() != null && dto.getConversacion().getMensajes() != null && !dto.getConversacion().getMensajes().isEmpty()) {
 	                    // Crear lista con solo el primer mensaje
 	                    List<QhMensajeDto> soloPrimerMensaje = new ArrayList<>();
 	                    soloPrimerMensaje.add(dto.getConversacion().getMensajes().get(0));
@@ -156,13 +160,37 @@ public class QhService {
 			conversacionRepository.save(conversacion);
 		}
 		
-		// Enviar a N8N para anonimizar
+		return QhDto.fromEntityToDto(conversacion);
+	}
+	
+	
+	//Respuesta alumno
+	@Transactional
+	public QhDto alumnoResponde(Long id, String contenido, String token) {
+	    QhConversacionEntity conversacion = conversacionRepository.findById(id).orElseThrow(() -> new RuntimeException("Conversación no encontrada"));
+	   
+	    // Validar token --> identificación
+	    if (!supabaseClient.validarToken(token)) {
+	        throw new RuntimeException("Token inválido");
+	    }
+	    
+	    // Crear mensaje del ALUMNO (se anonimizará)
+	    QhMensajeEntity mensaje = new QhMensajeEntity();
+	    mensaje.setConversacion(conversacion);
+	    mensaje.setEmisor("alumno");  // Para el JSON
+	    mensaje.setContenido(contenido);
+	    mensaje.setFecha(LocalDateTime.now().format(formatter));
+	    mensaje.setLeido(false);
+	    
+	    QhMensajeEntity guardado = mensajeRepository.save(mensaje);
+	    
+	    // Enviar a N8N
 	    CompletableFuture.runAsync(() -> {
 	        try {
 	            Map<String, Object> payload = new HashMap<>();
+	            payload.put("mensajeId", guardado.getId());
 	            payload.put("conversacionId", id);
-	            payload.put("mensajeOriginal", contenido);
-	            payload.put("emisor", "profesor");
+	            payload.put("contenidoOriginal", contenido);
 	            
 	            HttpHeaders headers = new HttpHeaders();
 	            headers.setContentType(MediaType.APPLICATION_JSON);
@@ -176,7 +204,7 @@ public class QhService {
 	        }
 	    });
 	    
-		return QhDto.fromEntityToDto(conversacion);
+	    return QhDto.fromEntityToDto(conversacion);
 	}
 	
 	/*Cambiar de estado -resuelto,revision-*/

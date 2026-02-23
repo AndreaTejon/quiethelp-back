@@ -41,14 +41,14 @@ public class QhController {
         if (dtoConToken.getToken() == null || dtoConToken.getToken().trim().isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "El token es obligatorio"));
         }
-/*
+
         // 2. Validar el token contra Supabase (que exista en la BD)
         boolean tokenValido = supabaseClient.validarToken(dtoConToken.getToken());
 
         if (!tokenValido) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token inválido o no autorizado"));
         }
-*/
+
         // 3. Extraer los datos del mensaje (sin token) para validarlos
         QhDto dto = new QhDto();
         dto.setEmisor(dtoConToken.getEmisor());
@@ -257,6 +257,33 @@ public class QhController {
 
         } catch (RuntimeException e) {
             // 404 NOT FOUND: conversación no existe
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    /* ============================================
+    ENDPOINT PARA ALUMNO: Responder una converasción
+ 	POST http://localhost:8080/api/conversaciones/{id}/alumno-responder
+    ============================================ */
+    @PostMapping("/{id}/alumno-responder")
+    public ResponseEntity<?> alumnoResponde(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String token = body.get("token"); //Para identificación 
+        String contenido = body.get("contenido");
+        if (token == null || contenido == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Token y contenido son obligatorios"));
+        }
+        
+        //Validación de token existente
+        boolean tokenValido = supabaseClient.validarToken(token);
+        if (!tokenValido) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token inválido o no autorizado")
+            );
+        }
+        
+        try {
+            QhDto conversacion = qhService.alumnoResponde(id, contenido, token);
+            return ResponseEntity.ok(conversacion);
+        } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
