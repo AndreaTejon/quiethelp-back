@@ -60,43 +60,42 @@ public class QhService {
 	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	
-	/* Crear converasción -- mensaje de alumno*/
+	/* Crear conversación -- mensaje de alumno*/
 	@Transactional
 	public QhDto crearConversacion(QhDto dto) {
-		// 1. Guarda en Supabase
-		QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto); //Crear conversación
-		QhConversacionEntity guardada = conversacionRepository.save(conversacion);
-		
-		// 2. Se guarda el primer mensaje
-		QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
-		
-		// 3. Guardar mensaje en BBDD
+	    // 1. Obtener mensaje PRIMERO
+	    QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
+	    String textoMensaje = primerMensajeDto.getMensaje();
+	    
+	    System.out.println("📨 Mensaje recibido: '" + textoMensaje + "'");
+	    
+	    // 2. Si NO es validación, guardar TODO normal
+	    QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto);
+	    QhConversacionEntity guardada = conversacionRepository.save(conversacion);
+	    
 	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
 	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
-		
-		// 4. Enviar a N8N
+	    
+	    // 3. Enviar a N8N
 	    CompletableFuture.runAsync(() -> {
 	        try {
 	            Map<String, Object> payload = new HashMap<>();
-	            payload.put("mensajeId", mensajeGuardado.getId()); // Mensaje a actualizar
+	            payload.put("mensajeId", mensajeGuardado.getId());
 	            payload.put("conversacionId", guardada.getId());
-	            payload.put("contenidoOriginal", primerMensajeDto.getMensaje()); // Texto a anonimizar
+	            payload.put("contenidoOriginal", textoMensaje);
 	            
-	            //Petición HTTP
 	            HttpHeaders headers = new HttpHeaders();
 	            headers.setContentType(MediaType.APPLICATION_JSON);
-	            
 	            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 	            
-	          //LLamada a N8
 	            restTemplate.postForObject(n8nUrl, request, String.class);
 	            
 	        } catch (Exception e) {
 	            System.err.println("Error al anonimizar: " + e.getMessage());
 	        }
 	    });
-
-		return QhDto.fromEntityToDto(guardada);
+	    
+	    return QhDto.fromEntityToDto(guardada);
 	}
 	
 	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/

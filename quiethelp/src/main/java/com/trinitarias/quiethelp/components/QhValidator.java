@@ -92,8 +92,8 @@ public class QhValidator {
         }
 
         // Solo validar longitud si vienen
-        if (emisor.getCurso() != null && emisor.getCurso().length() > 10) {
-            errores.add("El curso no puede exceder 10 caracteres");
+        if (emisor.getCurso() != null && emisor.getCurso().length() > 30) {
+            errores.add("El curso no puede exceder 30 caracteres");
         }
         
         if (emisor.getGrupo() != null && emisor.getGrupo().length() > 20) {

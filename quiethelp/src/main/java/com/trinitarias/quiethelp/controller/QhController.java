@@ -39,22 +39,24 @@ public class QhController {
 
         // 1. Validar que el token no sea nulo ni vacío
         if (dtoConToken.getToken() == null || dtoConToken.getToken().trim().isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "El token es obligatorio"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El token es obligatorio"));
         }
 
         // 2. Validar el token contra Supabase (que exista en la BD)
         boolean tokenValido = supabaseClient.validarToken(dtoConToken.getToken());
 
         if (!tokenValido) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token inválido o no autorizado"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token inválido o no autorizado"));
         }
 
-        // 3. Extraer los datos del mensaje (sin token) para validarlos
+        // 3. Extraer los datos del mensaje para validarlos
         QhDto dto = new QhDto();
         dto.setEmisor(dtoConToken.getEmisor());
         dto.setConversacion(dtoConToken.getConversacion());
 
-        // 4. Validar los datos del mensaje (categoría obligatoria, mensaje no vacío, etc)
+        // 4. Validar los datos del mensaje (categoría, mensaje no vacío, etc)
         List<String> errores = qhValidator.validarQhDto(dto);
 
         if (!errores.isEmpty()) {
@@ -64,7 +66,24 @@ public class QhController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
 
-        // 5. Crear la conversación en la BD
+        // 5. Detectar si es mensaje de validación
+        String textoMensaje = dto.getConversacion().getMensajes().get(0).getMensaje();
+        System.out.println("🔍 CONTROLLER - mensaje: '" + textoMensaje + "'");
+        boolean esMensajeValidacion = textoMensaje.toLowerCase().trim().equals("validación") || 
+                textoMensaje.toLowerCase().trim().equals("validacion");
+
+        if (esMensajeValidacion) {
+            // No guardamos nada, pero devolvemos 201 CREATED para que el frontend navegue
+            System.out.println("📌 Mensaje de validación detectado - No se guarda en BD");
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of(
+                        "valido", true,
+                        "mensaje", "Token válido",
+                        "validacion", true
+                    ));
+        }
+
+        // 6. Crear la conversación en la BD (solo para mensajes reales)
         try {
             QhDto nuevaConversacion = qhService.crearConversacion(dto);
             // 201 CREATED: recurso creado exitosamente
@@ -287,4 +306,5 @@ public class QhController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
+    
 }
