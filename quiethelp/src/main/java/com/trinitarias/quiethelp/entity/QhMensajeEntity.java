@@ -1,6 +1,7 @@
 package com.trinitarias.quiethelp.entity;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import com.trinitarias.quiethelp.dto.QhMensajeDto;
 
@@ -83,11 +84,11 @@ public class QhMensajeEntity {
     
     public static QhMensajeEntity fromDtoToEntity(QhMensajeDto dto, QhConversacionEntity conversacion) {
         QhMensajeEntity entity = new QhMensajeEntity();
-        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         entity.setConversacion(conversacion);
         entity.setEmisor(dto.getEmisor() != null ? dto.getEmisor() : "alumno");
         entity.setContenido(dto.getMensaje());
-        entity.setFecha(dto.getFecha() != null ? dto.getFecha() : LocalDateTime.now().toString());
+        entity.setFecha(dto.getFecha() != null ? dto.getFecha() : LocalDateTime.now().format(formatter));
         entity.setLeido(dto.isLeido());
         
         return entity;
