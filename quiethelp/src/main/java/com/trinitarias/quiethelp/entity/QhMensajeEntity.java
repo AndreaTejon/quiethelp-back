@@ -71,7 +71,7 @@ public class QhMensajeEntity {
     }
 
     public void setFecha(String fecha) {
-        this.fecha = fecha;
+            this.fecha = fecha;
     }
 
     public boolean isLeido() {
@@ -83,12 +83,12 @@ public class QhMensajeEntity {
     }
     
     public static QhMensajeEntity fromDtoToEntity(QhMensajeDto dto, QhConversacionEntity conversacion) {
+    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         QhMensajeEntity entity = new QhMensajeEntity();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         entity.setConversacion(conversacion);
         entity.setEmisor(dto.getEmisor() != null ? dto.getEmisor() : "alumno");
         entity.setContenido(dto.getMensaje());
-        entity.setFecha(dto.getFecha() != null ? dto.getFecha() : LocalDateTime.now().format(formatter));
+        entity.setFecha(LocalDateTime.now().format(formatter));
         entity.setLeido(dto.isLeido());
         
         return entity;
