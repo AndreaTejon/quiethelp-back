@@ -5,6 +5,10 @@ import com.trinitarias.quiethelp.components.SupabaseClient;
 import com.trinitarias.quiethelp.dto.QhDashboardResumenDto;
 import com.trinitarias.quiethelp.dto.QhDto;
 import com.trinitarias.quiethelp.dto.QhDtoConToken;
+<<<<<<< HEAD
+=======
+import com.trinitarias.quiethelp.entity.QhConversacionEntity;
+>>>>>>> back-jesus
 import com.trinitarias.quiethelp.service.QhService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +18,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+<<<<<<< HEAD
+=======
+import java.util.stream.Collectors;
+>>>>>>> back-jesus
 
 @RestController
 @RequestMapping("/api/conversaciones")
@@ -39,13 +47,19 @@ public class QhController {
 
         // 1. Validar que el token no sea nulo ni vacío
         if (dtoConToken.getToken() == null || dtoConToken.getToken().trim().isEmpty()) {
+<<<<<<< HEAD
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "El token es obligatorio"));
+=======
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El token es obligatorio"));
+>>>>>>> back-jesus
         }
 
         // 2. Validar el token contra Supabase (que exista en la BD)
         boolean tokenValido = supabaseClient.validarToken(dtoConToken.getToken());
 
         if (!tokenValido) {
+<<<<<<< HEAD
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token inválido o no autorizado"));
         }
 
@@ -55,6 +69,19 @@ public class QhController {
         dto.setConversacion(dtoConToken.getConversacion());
 
         // 4. Validar los datos del mensaje (categoría obligatoria, mensaje no vacío, etc)
+=======
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token inválido o no autorizado"));
+        }
+
+        // 3. Extraer los datos del mensaje para validarlos
+        QhDto dto = new QhDto();
+        dto.setEmisor(dtoConToken.getEmisor());
+        dto.setConversacion(dtoConToken.getConversacion());
+        dto.setToken(dtoConToken.getToken());
+
+        // 4. Validar los datos del mensaje (categoría, mensaje no vacío, etc)
+>>>>>>> back-jesus
         List<String> errores = qhValidator.validarQhDto(dto);
 
         if (!errores.isEmpty()) {
@@ -64,7 +91,28 @@ public class QhController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
 
+<<<<<<< HEAD
         // 5. Crear la conversación en la BD
+=======
+        // 5. Detectar si es mensaje de validación
+        String textoMensaje = dto.getConversacion().getMensajes().get(0).getMensaje();
+        System.out.println("🔍 CONTROLLER - mensaje: '" + textoMensaje + "'");
+        boolean esMensajeValidacion = textoMensaje.toLowerCase().trim().equals("validación") || 
+                textoMensaje.toLowerCase().trim().equals("validacion");
+
+        if (esMensajeValidacion) {
+            // No guardamos nada, pero devolvemos 201 CREATED para que el frontend navegue
+            System.out.println("📌 Mensaje de validación detectado - No se guarda en BD");
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of(
+                        "valido", true,
+                        "mensaje", "Token válido",
+                        "validacion", true
+                    ));
+        }
+
+        // 6. Crear la conversación en la BD (solo para mensajes reales)
+>>>>>>> back-jesus
         try {
             QhDto nuevaConversacion = qhService.crearConversacion(dto);
             // 201 CREATED: recurso creado exitosamente
@@ -287,4 +335,42 @@ public class QhController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
+<<<<<<< HEAD
+=======
+    
+	    /* ============================================
+	    ENDPOINT PARA ALUMNO: Obtener todas sus conversaciones (historial)
+	    GET /api/conversaciones/alumno?token=TOKEN
+	    Devuelve: Lista de conversaciones (solo PENDIENTES y EN_REVISION)
+	    ============================================ */
+	 @GetMapping("/alumno")
+	 public ResponseEntity<?> obtenerConversacionesAlumno(@RequestParam String token) {
+	     // 1. Validar el token
+	     if (token == null || token.trim().isEmpty()) {
+	         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+	                 .body(Map.of("error", "El token es obligatorio"));
+	     }
+	     
+	     // 2. Verificar que el token existe en Supabase
+	     boolean tokenValido = supabaseClient.validarToken(token);
+	     
+	     if (!tokenValido) {
+	         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                 .body(Map.of("error", "Token inválido"));
+	     }
+	     
+	     // 3. Obtener conversaciones del alumno (solo PENDIENTE y EN_REVISION)
+	     // NOTA: Necesitas pasar el token para filtrar, o el ID del alumno
+	     // Por ahora asumimos que el token está en la tabla conversacion
+	     List<QhConversacionEntity> conversaciones = qhService.obtenerConversacionesPorToken(token);
+	     
+	     // 4. Convertir a DTO
+	     List<QhDto> conversacionesDto = conversaciones.stream()
+	             .map(QhDto::fromEntityToDto)
+	             .collect(Collectors.toList());
+	     
+	     return ResponseEntity.ok(conversacionesDto);
+	 }
+	    
+>>>>>>> back-jesus
 }

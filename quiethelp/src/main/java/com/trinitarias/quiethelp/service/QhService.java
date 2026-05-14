@@ -60,6 +60,7 @@ public class QhService {
 	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	
+<<<<<<< HEAD
 	/* Crear converasción -- mensaje de alumno*/
 	@Transactional
 	public QhDto crearConversacion(QhDto dto) {
@@ -90,13 +91,60 @@ public class QhService {
 	            
 	          //LLamada a N8
 	            restTemplate.postForObject(n8nUrl, request, String.class);
+=======
+	/* Crear conversación -- mensaje de alumno*/
+	@Transactional
+	public QhDto crearConversacion(QhDto dto) {
+	    // 1. Obtener mensaje PRIMERO
+	    QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
+	    String textoMensaje = primerMensajeDto.getMensaje();
+	    
+	    System.out.println("📨 Mensaje recibido: '" + textoMensaje + "'");
+	    
+	    // 2. Si NO es validación, guardar TODO normal
+	    QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto);
+	    QhConversacionEntity guardada = conversacionRepository.save(conversacion);
+	    
+	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
+	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
+	    
+	    // 3. Enviar a N8N
+	    CompletableFuture.runAsync(() -> {
+	        try {
+	            sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
+>>>>>>> back-jesus
 	            
 	        } catch (Exception e) {
 	            System.err.println("Error al anonimizar: " + e.getMessage());
 	        }
 	    });
+<<<<<<< HEAD
 
 		return QhDto.fromEntityToDto(guardada);
+=======
+	    
+	    return QhDto.fromEntityToDto(guardada);
+	}
+
+	private void sendN8NMethod(String textoMensaje, QhConversacionEntity guardada, QhMensajeEntity mensajeGuardado) {
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("mensajeId", mensajeGuardado.getId());
+		payload.put("conversacionId", guardada.getId());
+		payload.put("contenidoOriginal", textoMensaje);
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+		
+		restTemplate.postForObject(n8nUrl, request, String.class);
+	}
+	
+	/* Obtener conversaciones por token del alumno (solo PENDIENTE y EN_REVISION) */
+	public List<QhConversacionEntity> obtenerConversacionesPorToken(String token) {
+	    // Buscar conversaciones por token (asumiendo que guardas el token en la tabla)
+	    // Y filtrar solo las que NO están RESUELTAS
+	    return conversacionRepository.findByTokenAndEstadoNot(token, "RESUELTO");
+>>>>>>> back-jesus
 	}
 	
 	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/
