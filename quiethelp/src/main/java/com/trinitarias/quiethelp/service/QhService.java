@@ -60,38 +60,6 @@ public class QhService {
 	
 	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 	
-<<<<<<< HEAD
-	/* Crear converasción -- mensaje de alumno*/
-	@Transactional
-	public QhDto crearConversacion(QhDto dto) {
-		// 1. Guarda en Supabase
-		QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto); //Crear conversación
-		QhConversacionEntity guardada = conversacionRepository.save(conversacion);
-		
-		// 2. Se guarda el primer mensaje
-		QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
-		
-		// 3. Guardar mensaje en BBDD
-	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
-	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
-		
-		// 4. Enviar a N8N
-	    CompletableFuture.runAsync(() -> {
-	        try {
-	            Map<String, Object> payload = new HashMap<>();
-	            payload.put("mensajeId", mensajeGuardado.getId()); // Mensaje a actualizar
-	            payload.put("conversacionId", guardada.getId());
-	            payload.put("contenidoOriginal", primerMensajeDto.getMensaje()); // Texto a anonimizar
-	            
-	            //Petición HTTP
-	            HttpHeaders headers = new HttpHeaders();
-	            headers.setContentType(MediaType.APPLICATION_JSON);
-	            
-	            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-	            
-	          //LLamada a N8
-	            restTemplate.postForObject(n8nUrl, request, String.class);
-=======
 	/* Crear conversación -- mensaje de alumno*/
 	@Transactional
 	public QhDto crearConversacion(QhDto dto) {
@@ -112,16 +80,11 @@ public class QhService {
 	    CompletableFuture.runAsync(() -> {
 	        try {
 	            sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
->>>>>>> back-jesus
 	            
 	        } catch (Exception e) {
 	            System.err.println("Error al anonimizar: " + e.getMessage());
 	        }
 	    });
-<<<<<<< HEAD
-
-		return QhDto.fromEntityToDto(guardada);
-=======
 	    
 	    return QhDto.fromEntityToDto(guardada);
 	}
@@ -144,8 +107,8 @@ public class QhService {
 	    // Buscar conversaciones por token (asumiendo que guardas el token en la tabla)
 	    // Y filtrar solo las que NO están RESUELTAS
 	    return conversacionRepository.findByTokenAndEstadoNot(token, "RESUELTO");
->>>>>>> back-jesus
 	}
+	
 	
 	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/
 	public List<QhDto> obtenerConversacionesDashboard(String estado, String tarjeta, Boolean urgente) {

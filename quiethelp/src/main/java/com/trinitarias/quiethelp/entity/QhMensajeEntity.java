@@ -1,10 +1,7 @@
 package com.trinitarias.quiethelp.entity;
 
 import java.time.LocalDateTime;
-<<<<<<< HEAD
-=======
 import java.time.format.DateTimeFormatter;
->>>>>>> back-jesus
 
 import com.trinitarias.quiethelp.dto.QhMensajeDto;
 
@@ -26,11 +23,7 @@ public class QhMensajeEntity {
     private String emisor;        // "alumno" o "profesor"
 
     @Column(length = 2000)
-<<<<<<< HEAD
-    private String contenido;z
-=======
     private String contenido;
->>>>>>> back-jesus
 
     private String fecha;
 
@@ -78,11 +71,7 @@ public class QhMensajeEntity {
     }
 
     public void setFecha(String fecha) {
-<<<<<<< HEAD
-        this.fecha = fecha;
-=======
             this.fecha = fecha;
->>>>>>> back-jesus
     }
 
     public boolean isLeido() {
@@ -94,21 +83,12 @@ public class QhMensajeEntity {
     }
     
     public static QhMensajeEntity fromDtoToEntity(QhMensajeDto dto, QhConversacionEntity conversacion) {
-<<<<<<< HEAD
-        QhMensajeEntity entity = new QhMensajeEntity();
-        
-        entity.setConversacion(conversacion);
-        entity.setEmisor(dto.getEmisor() != null ? dto.getEmisor() : "alumno");
-        entity.setContenido(dto.getMensaje());
-        entity.setFecha(dto.getFecha() != null ? dto.getFecha() : LocalDateTime.now().toString());
-=======
     	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         QhMensajeEntity entity = new QhMensajeEntity();
         entity.setConversacion(conversacion);
         entity.setEmisor(dto.getEmisor() != null ? dto.getEmisor() : "alumno");
         entity.setContenido(dto.getMensaje());
         entity.setFecha(LocalDateTime.now().format(formatter));
->>>>>>> back-jesus
         entity.setLeido(dto.isLeido());
         
         return entity;

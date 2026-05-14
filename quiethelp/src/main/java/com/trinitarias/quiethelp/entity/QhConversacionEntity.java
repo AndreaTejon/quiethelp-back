@@ -46,13 +46,10 @@ public class QhConversacionEntity {
     private String fechaAsignacion;  // Cuando profesor toma el caso
     private String fechaResolucion;  // Cuando se resuelve
 
-<<<<<<< HEAD
-=======
     // Token del alumno (para identificar sus conversaciones)
     @Column(name = "token", nullable = false)
     private String token;
     
->>>>>>> back-jesus
     // Relación uno a muchos con mensajes
     @OneToMany(mappedBy = "conversacion", cascade = CascadeType.ALL)
     private List<QhMensajeEntity> mensajes;
@@ -165,8 +162,6 @@ public class QhConversacionEntity {
         this.mensajes = mensajes;
     }
     
-<<<<<<< HEAD
-=======
     public String getToken() {
         return token;
     }
@@ -175,7 +170,6 @@ public class QhConversacionEntity {
         this.token = token;
     }
     
->>>>>>> back-jesus
     public static QhConversacionEntity fromDtoToEntity(QhDto dto) {
         QhConversacionEntity entity = new QhConversacionEntity();
         
@@ -184,10 +178,7 @@ public class QhConversacionEntity {
         entity.setGrupo(dto.getEmisor().getGrupo());
         entity.setTarjeta(dto.getEmisor().getTarjeta());
         entity.setUrgente(dto.getEmisor().isUrgente());
-<<<<<<< HEAD
-=======
         entity.setToken(dto.getToken());
->>>>>>> back-jesus
         
         // Primer mensaje (el texto)
         if (dto.getConversacion() != null && 
