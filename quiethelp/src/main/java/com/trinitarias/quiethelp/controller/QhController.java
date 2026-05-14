@@ -5,6 +5,7 @@ import com.trinitarias.quiethelp.components.SupabaseClient;
 import com.trinitarias.quiethelp.dto.QhDashboardResumenDto;
 import com.trinitarias.quiethelp.dto.QhDto;
 import com.trinitarias.quiethelp.dto.QhDtoConToken;
+import com.trinitarias.quiethelp.entity.QhConversacionEntity;
 import com.trinitarias.quiethelp.service.QhService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/conversaciones")
@@ -55,6 +57,7 @@ public class QhController {
         QhDto dto = new QhDto();
         dto.setEmisor(dtoConToken.getEmisor());
         dto.setConversacion(dtoConToken.getConversacion());
+        dto.setToken(dtoConToken.getToken());
 
         // 4. Validar los datos del mensaje (categoría, mensaje no vacío, etc)
         List<String> errores = qhValidator.validarQhDto(dto);
@@ -307,4 +310,38 @@ public class QhController {
         }
     }
     
+	    /* ============================================
+	    ENDPOINT PARA ALUMNO: Obtener todas sus conversaciones (historial)
+	    GET /api/conversaciones/alumno?token=TOKEN
+	    Devuelve: Lista de conversaciones (solo PENDIENTES y EN_REVISION)
+	    ============================================ */
+	 @GetMapping("/alumno")
+	 public ResponseEntity<?> obtenerConversacionesAlumno(@RequestParam String token) {
+	     // 1. Validar el token
+	     if (token == null || token.trim().isEmpty()) {
+	         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+	                 .body(Map.of("error", "El token es obligatorio"));
+	     }
+	     
+	     // 2. Verificar que el token existe en Supabase
+	     boolean tokenValido = supabaseClient.validarToken(token);
+	     
+	     if (!tokenValido) {
+	         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                 .body(Map.of("error", "Token inválido"));
+	     }
+	     
+	     // 3. Obtener conversaciones del alumno (solo PENDIENTE y EN_REVISION)
+	     // NOTA: Necesitas pasar el token para filtrar, o el ID del alumno
+	     // Por ahora asumimos que el token está en la tabla conversacion
+	     List<QhConversacionEntity> conversaciones = qhService.obtenerConversacionesPorToken(token);
+	     
+	     // 4. Convertir a DTO
+	     List<QhDto> conversacionesDto = conversaciones.stream()
+	             .map(QhDto::fromEntityToDto)
+	             .collect(Collectors.toList());
+	     
+	     return ResponseEntity.ok(conversacionesDto);
+	 }
+	    
 }

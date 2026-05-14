@@ -35,4 +35,11 @@ public interface QhConversacionRepository extends JpaRepository<QhConversacionEn
             @Param("estado") String estado,
             @Param("tarjeta") String tarjeta,
             @Param("urgente") Boolean urgente);
+    
+ // Buscar conversaciones por token del alumno (todos los estados)
+    List<QhConversacionEntity> findByToken(String token);
+
+    // Buscar conversaciones por token excluyendo un estado específico
+    @Query("SELECT c FROM QhConversacionEntity c WHERE c.token = :token AND c.estado != :estado")
+    List<QhConversacionEntity> findByTokenAndEstadoNot(@Param("token") String token, @Param("estado") String estado);
 }

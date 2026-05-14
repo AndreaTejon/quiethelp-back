@@ -9,6 +9,7 @@ public class QhDto {
 	
 	private QhEmisorDto emisor;
 	private QhConversacionDto conversacion;
+	private String token; 
 	
 	public QhDto() {}
 	
@@ -31,6 +32,14 @@ public class QhDto {
 
 	public void setConversacion(QhConversacionDto conversacion) {
 		this.conversacion = conversacion;
+	}
+	
+	public String getToken() {
+	    return token;
+	}
+
+	public void setToken(String token) {
+	    this.token = token;
 	}
 
 	public static QhDto fromEntityToDto(QhConversacionEntity entity) {

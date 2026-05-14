@@ -79,16 +79,7 @@ public class QhService {
 	    // 3. Enviar a N8N
 	    CompletableFuture.runAsync(() -> {
 	        try {
-	            Map<String, Object> payload = new HashMap<>();
-	            payload.put("mensajeId", mensajeGuardado.getId());
-	            payload.put("conversacionId", guardada.getId());
-	            payload.put("contenidoOriginal", textoMensaje);
-	            
-	            HttpHeaders headers = new HttpHeaders();
-	            headers.setContentType(MediaType.APPLICATION_JSON);
-	            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-	            
-	            restTemplate.postForObject(n8nUrl, request, String.class);
+	            sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
 	            
 	        } catch (Exception e) {
 	            System.err.println("Error al anonimizar: " + e.getMessage());
@@ -96,6 +87,26 @@ public class QhService {
 	    });
 	    
 	    return QhDto.fromEntityToDto(guardada);
+	}
+
+	private void sendN8NMethod(String textoMensaje, QhConversacionEntity guardada, QhMensajeEntity mensajeGuardado) {
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("mensajeId", mensajeGuardado.getId());
+		payload.put("conversacionId", guardada.getId());
+		payload.put("contenidoOriginal", textoMensaje);
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+		
+		restTemplate.postForObject(n8nUrl, request, String.class);
+	}
+	
+	/* Obtener conversaciones por token del alumno (solo PENDIENTE y EN_REVISION) */
+	public List<QhConversacionEntity> obtenerConversacionesPorToken(String token) {
+	    // Buscar conversaciones por token (asumiendo que guardas el token en la tabla)
+	    // Y filtrar solo las que NO están RESUELTAS
+	    return conversacionRepository.findByTokenAndEstadoNot(token, "RESUELTO");
 	}
 	
 	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/
