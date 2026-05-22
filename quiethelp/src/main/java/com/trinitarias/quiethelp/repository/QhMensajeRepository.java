@@ -16,14 +16,19 @@ public interface QhMensajeRepository extends JpaRepository<QhMensajeEntity, Long
     // Contar mensajes no leídos en una conversación
     long countByConversacionIdAndLeidoFalse(Long conversacionId);
     
-    // Marcar mensajes como leídos
-    @Modifying //Update
-    @Transactional
-    @Query("UPDATE QhMensajeEntity m SET m.leido = true WHERE m.conversacion.id = :conversacionId AND m.emisor = 'profesor'")
-    void marcarMensajesProfesorComoLeidos(@Param("conversacionId") Long conversacionId);
+    // Contar mensajes no leídos del alumno en una conversación específica
+    @Query("SELECT COUNT(m) FROM QhMensajeEntity m WHERE m.conversacion.id = :conversacionId AND m.emisor = 'alumno' AND m.leido = false")
+    int countMensajesAlumnoNoLeidos(@Param("conversacionId") Long conversacionId);
     
+    // Marcar mensajes del profesor como leídos (solo los no leídos)
     @Modifying
     @Transactional
-    @Query("UPDATE QhMensajeEntity m SET m.leido = true WHERE m.conversacion.id = :conversacionId AND m.emisor = 'alumno'")
-    void marcarMensajesAlumnoComoLeidos(@Param("conversacionId") Long conversacionId);
+    @Query("UPDATE QhMensajeEntity m SET m.leido = true WHERE m.conversacion.id = :conversacionId AND m.emisor = 'profesor' AND m.leido = false")
+    int marcarMensajesProfesorComoLeidos(@Param("conversacionId") Long conversacionId);
+    
+    // Marcar mensajes del alumno como leídos (solo los no leídos) - DEVUELVE int
+    @Modifying
+    @Transactional
+    @Query("UPDATE QhMensajeEntity m SET m.leido = true WHERE m.conversacion.id = :conversacionId AND m.emisor = 'alumno' AND m.leido = false")
+    int marcarMensajesAlumnoComoLeidos(@Param("conversacionId") Long conversacionId);
 }

@@ -105,11 +105,25 @@ public class QhController {
        GET /api/conversaciones/dashboard?estado=PENDIENTE&tarjeta=Bullying&urgente=true
        ============================================ */
     @GetMapping("/dashboard")
-    public ResponseEntity<List<QhDto>> obtenerDashboard(@RequestParam(required = false) String estado, @RequestParam(required = false) String tarjeta,
-            @RequestParam(required = false) Boolean urgente) {
-        List<QhDto> conversaciones = qhService.obtenerConversacionesDashboard(estado, tarjeta, urgente);
-        // 200 OK: devuelve la lista (puede estar vacía)
-        return ResponseEntity.status(HttpStatus.OK).body(conversaciones);
+    public ResponseEntity<List<QhDto>> obtenerDashboard(
+            @RequestParam(required = false) String estado, 
+            @RequestParam(required = false) String tarjeta,
+            @RequestParam(required = false) Boolean urgente,
+            @RequestParam(required = false) String revisorId) {  
+        List<QhDto> conversaciones;
+        
+        if (revisorId != null && !revisorId.isEmpty()) {
+            // Si el profesor está logueado, solo ver sus conversaciones asignadas
+            // más las que están PENDIENTES (sin asignar)
+            conversaciones = qhService.obtenerConversacionesDashboardPorRevisor(
+                estado, tarjeta, urgente, revisorId
+            );
+        } else {
+            // Si no, ver todas (admin o sin filtrar)
+            conversaciones = qhService.obtenerConversacionesDashboard(estado, tarjeta, urgente);
+        }
+        
+        return ResponseEntity.ok(conversaciones);
     }
 
     /* ============================================
@@ -117,17 +131,21 @@ public class QhController {
        GET /api/conversaciones/{id}
        ============================================ */
     @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerConversacion(@PathVariable Long id) {
+    public ResponseEntity<?> obtenerConversacion(
+            @PathVariable Long id,
+            @RequestParam(required = false) String revisorId) {
         try {
             QhDto conversacion = qhService.obtenerConversacionCompleta(id);
-            // 200 OK: conversación encontrada
-            return ResponseEntity.status(HttpStatus.OK).body(conversacion);
+            // Verificar permisos
+            if (revisorId != null && !"PENDIENTE".equals(conversacion.getConversacion().getEstado())) {
+                String conversacionRevisorId = conversacion.getConversacion().getRevisorId();
+                if (conversacionRevisorId == null || !conversacionRevisorId.equals(revisorId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "No tienes permiso para ver esta conversación"));
+                }
+            }
+            return ResponseEntity.ok(conversacion);
         } catch (RuntimeException e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("status", "error");
-            response.put("mensaje", e.getMessage());
-            // 404 NOT FOUND: no existe la conversación
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -136,7 +154,9 @@ public class QhController {
        PATCH /api/conversaciones/{id}/asignar?revisorId=123&revisorNombre=María
        ============================================ */
     @PatchMapping("/{id}/asignar")
-    public ResponseEntity<?> asignarConversacion(@PathVariable Long id, @RequestParam String revisorId, @RequestParam String revisorNombre) {
+    public ResponseEntity<?> asignarConversacion(@PathVariable Long id, 
+                                                  @RequestParam String revisorId, 
+                                                  @RequestParam String revisorNombre) {
         try {
             QhDto conversacion = qhService.asignarConversacion(id, revisorId, revisorNombre);
             // 200 OK: asignación exitosa
@@ -228,24 +248,59 @@ public class QhController {
     }
 
     /* ============================================
-       ENDPOINT PARA MARCAR MENSAJES COMO LEÍDOS
+       ENDPOINT PARA MARCAR MENSAJES COMO LEÍDOS (ACTUALIZADO)
+       PUT /api/conversaciones/{id}/marcar-leidos
+       Body: { "revisorId": 123 }
+       ============================================ */
+    @PutMapping("/{id}/marcar-leidos")
+    public ResponseEntity<?> marcarMensajesComoLeidos(@PathVariable Long id, @RequestBody Map<String, Long> body) {
+        // Validar que el revisorId esté presente
+        if (!body.containsKey("revisorId") || body.get("revisorId") == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El ID del revisor es obligatorio"));
+        }
+
+        try {
+            Long revisorId = body.get("revisorId");
+            
+            // Marcar mensajes del alumno como leídos
+            int mensajesActualizados = qhService.marcarMensajesAlumnoComoLeidos(id, revisorId);
+            
+            // 200 OK: operación exitosa
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of(
+                "success", true,
+                "mensajesActualizados", mensajesActualizados,
+                "mensaje", "Mensajes del alumno marcados como leídos"
+            ));
+        } catch (Exception e) {
+            // 500 INTERNAL SERVER ERROR: error inesperado
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /* ============================================
+       ENDPOINT LEGACY: Marcar mensajes como leídos (por emisor)
        POST /api/conversaciones/{id}/leidos?emisor=profesor
+       Mantenemos este endpoint por compatibilidad
        ============================================ */
     @PostMapping("/{id}/leidos")
-    public ResponseEntity<?> marcarMensajesComoLeidos(@PathVariable Long id, @RequestParam String emisor) {
+    public ResponseEntity<?> marcarMensajesComoLeidosLegacy(@PathVariable Long id, @RequestParam String emisor) {
         // Validar que el emisor sea "profesor" o "alumno"
         if (!"profesor".equals(emisor) && !"alumno".equals(emisor)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Emisor no válido. Debe ser 'profesor' o 'alumno'")
-            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Emisor no válido. Debe ser 'profesor' o 'alumno'"));
         }
 
         try {
             qhService.marcarMensajesComoLeidos(id, emisor);
             // 200 OK: operación exitosa
-            return ResponseEntity.status(HttpStatus.OK).body(Map.of("mensaje", "Mensajes marcados como leídos"));
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(Map.of("mensaje", "Mensajes marcados como leídos"));
         } catch (Exception e) {
             // 500 INTERNAL SERVER ERROR: error inesperado
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -259,7 +314,8 @@ public class QhController {
         boolean tokenValido = supabaseClient.validarToken(token);
 
         if (!tokenValido) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token inválido"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token inválido"));
         }
 
         try {
@@ -271,7 +327,8 @@ public class QhController {
 
             if (!tieneRespuestas) {
                 // 404: no hay respuestas aún
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Aún no hay respuestas del profesor"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Aún no hay respuestas del profesor"));
             }
 
             // 200 OK: devuelve la conversación con mensajes
@@ -279,69 +336,74 @@ public class QhController {
 
         } catch (RuntimeException e) {
             // 404 NOT FOUND: conversación no existe
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
     
     /* ============================================
-    ENDPOINT PARA ALUMNO: Responder una converasción
- 	POST http://localhost:8080/api/conversaciones/{id}/alumno-responder
-    ============================================ */
+       ENDPOINT PARA ALUMNO: Responder una conversación
+       POST http://localhost:8080/api/conversaciones/{id}/alumno-responder
+       ============================================ */
     @PostMapping("/{id}/alumno-responder")
     public ResponseEntity<?> alumnoResponde(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String token = body.get("token"); //Para identificación 
+        String token = body.get("token"); // Para identificación 
         String contenido = body.get("contenido");
+        
         if (token == null || contenido == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Token y contenido son obligatorios"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Token y contenido son obligatorios"));
         }
         
-        //Validación de token existente
+        // Validación de token existente
         boolean tokenValido = supabaseClient.validarToken(token);
         if (!tokenValido) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Token inválido o no autorizado")
-            );
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token inválido o no autorizado"));
         }
         
         try {
             QhDto conversacion = qhService.alumnoResponde(id, contenido, token);
+            
+            // IMPORTANTE: Cuando el alumno responde, el mensaje se guarda con leido = false
+            // para que el profesor vea la notificación
+            
             return ResponseEntity.ok(conversacion);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
     
-	    /* ============================================
-	    ENDPOINT PARA ALUMNO: Obtener todas sus conversaciones (historial)
-	    GET /api/conversaciones/alumno?token=TOKEN
-	    Devuelve: Lista de conversaciones (solo PENDIENTES y EN_REVISION)
-	    ============================================ */
-	 @GetMapping("/alumno")
-	 public ResponseEntity<?> obtenerConversacionesAlumno(@RequestParam String token) {
-	     // 1. Validar el token
-	     if (token == null || token.trim().isEmpty()) {
-	         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-	                 .body(Map.of("error", "El token es obligatorio"));
-	     }
-	     
-	     // 2. Verificar que el token existe en Supabase
-	     boolean tokenValido = supabaseClient.validarToken(token);
-	     
-	     if (!tokenValido) {
-	         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-	                 .body(Map.of("error", "Token inválido"));
-	     }
-	     
-	     // 3. Obtener conversaciones del alumno (solo PENDIENTE y EN_REVISION)
-	     // NOTA: Necesitas pasar el token para filtrar, o el ID del alumno
-	     // Por ahora asumimos que el token está en la tabla conversacion
-	     List<QhConversacionEntity> conversaciones = qhService.obtenerConversacionesPorToken(token);
-	     
-	     // 4. Convertir a DTO
-	     List<QhDto> conversacionesDto = conversaciones.stream()
-	             .map(QhDto::fromEntityToDto)
-	             .collect(Collectors.toList());
-	     
-	     return ResponseEntity.ok(conversacionesDto);
-	 }
-	    
+    /* ============================================
+       ENDPOINT PARA ALUMNO: Obtener todas sus conversaciones (historial)
+       GET /api/conversaciones/alumno?token=TOKEN
+       Devuelve: Lista de conversaciones (solo PENDIENTES y EN_REVISION)
+       ============================================ */
+    @GetMapping("/alumno")
+    public ResponseEntity<?> obtenerConversacionesAlumno(@RequestParam String token) {
+        // 1. Validar el token
+        if (token == null || token.trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El token es obligatorio"));
+        }
+        
+        // 2. Verificar que el token existe en Supabase
+        boolean tokenValido = supabaseClient.validarToken(token);
+        
+        if (!tokenValido) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token inválido"));
+        }
+        
+        // 3. Obtener conversaciones del alumno (solo PENDIENTE y EN_REVISION)
+        List<QhConversacionEntity> conversaciones = qhService.obtenerConversacionesPorToken(token);
+        
+        // 4. Convertir a DTO
+        List<QhDto> conversacionesDto = conversaciones.stream()
+                .map(QhDto::fromEntityToDto)
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(conversacionesDto);
+    }
 }

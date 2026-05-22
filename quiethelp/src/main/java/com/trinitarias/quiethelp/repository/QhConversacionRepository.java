@@ -42,4 +42,16 @@ public interface QhConversacionRepository extends JpaRepository<QhConversacionEn
     // Buscar conversaciones por token excluyendo un estado específico
     @Query("SELECT c FROM QhConversacionEntity c WHERE c.token = :token AND c.estado != :estado")
     List<QhConversacionEntity> findByTokenAndEstadoNot(@Param("token") String token, @Param("estado") String estado);
+    
+ // Buscar conversaciones PENDIENTES + las asignadas a este revisor
+    @Query("SELECT c FROM QhConversacionEntity c WHERE " +
+           "(:estado IS NULL OR c.estado = :estado) AND " +
+           "(:tarjeta IS NULL OR c.tarjeta = :tarjeta) AND " +
+           "(:urgente IS NULL OR c.urgente = :urgente) AND " +
+           "(c.estado = 'PENDIENTE' OR c.revisorId = :revisorId)")
+    List<QhConversacionEntity> findPendientesYAsignadasARevisor(
+            @Param("estado") String estado,
+            @Param("tarjeta") String tarjeta,
+            @Param("urgente") Boolean urgente,
+            @Param("revisorId") String revisorId);
 }

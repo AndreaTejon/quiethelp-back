@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 //Colecciones
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -24,9 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 //HTTP
-import org.springframework.http.HttpEntity;      // Para la petición completa
-import org.springframework.http.HttpHeaders;    // Para las cabeceras
-import org.springframework.http.MediaType;      // Para application/json
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 // BBDD 
 import com.trinitarias.quiethelp.components.SupabaseClient;
@@ -50,7 +49,7 @@ public class QhService {
 	private QhMensajeRepository mensajeRepository;
 	
 	@Autowired
-	private RestTemplate restTemplate; //CLiente HTTp
+	private RestTemplate restTemplate;
 	
 	@Value("${n8n.webhook.url}")
 	private String n8nUrl;
@@ -112,22 +111,24 @@ public class QhService {
 	
 	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/
 	public List<QhDto> obtenerConversacionesDashboard(String estado, String tarjeta, Boolean urgente) {
-		List<QhConversacionEntity> conversaciones = conversacionRepository.filtrarConversaciones(estado, tarjeta, urgente);
-		
-		return conversaciones.stream().map(conv -> {
-				QhDto dto = QhDto.fromEntityToDto(conv);
-				//Se manda el primer mensaje
-	            if (dto.getConversacion() != null && dto.getConversacion().getMensajes() != null && !dto.getConversacion().getMensajes().isEmpty()) {
-	                    // Crear lista con solo el primer mensaje
-	                    List<QhMensajeDto> soloPrimerMensaje = new ArrayList<>();
-	                    soloPrimerMensaje.add(dto.getConversacion().getMensajes().get(0));
-	                    dto.getConversacion().setMensajes(soloPrimerMensaje);
-	                } else {
-	                    dto.getConversacion().setMensajes(null);
-	                }
-	                
-	                return dto;
-				}).collect(Collectors.toList());
+	    List<QhConversacionEntity> conversaciones =
+	            conversacionRepository.filtrarConversaciones(estado, tarjeta, urgente);
+
+	    return conversaciones.stream().map(conv -> {
+	        QhDto dto = QhDto.fromEntityToDto(conv);
+
+	        if (dto.getConversacion() == null) {
+	            return dto;
+	        }
+
+	        if (dto.getConversacion().getMensajes() == null ||
+	                dto.getConversacion().getMensajes().isEmpty()) {
+	            dto.getConversacion().setMensajes(null);
+	            return dto;
+	        }
+
+	        return dto;
+	    }).collect(Collectors.toList());
 	}
 	
 	/*Conversación completa*/
@@ -191,7 +192,7 @@ public class QhService {
 	    mensaje.setEmisor("alumno");  // Para el JSON
 	    mensaje.setContenido(contenido);
 	    mensaje.setFecha(LocalDateTime.now().format(formatter));
-	    mensaje.setLeido(false);
+	    mensaje.setLeido(false);  // IMPORTANTE: el profesor no lo ha leído aún
 	    
 	    QhMensajeEntity guardado = mensajeRepository.save(mensaje);
 	    
@@ -231,7 +232,7 @@ public class QhService {
 		return QhDto.fromEntityToDto(actualizada);
 	}
 	
-	/*Marcar mensaje leído*/
+	/* Marcar mensajes como leídos (método legacy existente) */
 	@Transactional
 	public void marcarMensajesComoLeidos(Long conversacionId, String emisor) {
 		if("profesor".equals(emisor)) {
@@ -243,6 +244,26 @@ public class QhService {
 		}
 	}
 	
+	/* NUEVO MÉTODO: Marcar mensajes del ALUMNO como leídos por el PROFESOR */
+	@Transactional
+	public int marcarMensajesAlumnoComoLeidos(Long conversacionId, Long revisorId) {
+	    // 1. Verificar que la conversación existe
+	    QhConversacionEntity conversacion = conversacionRepository.findById(conversacionId)
+	        .orElseThrow(() -> new RuntimeException("Conversación no encontrada con id: " + conversacionId));
+	    
+	    // 2. Verificar que el revisor está asignado a esta conversación
+	    if (conversacion.getRevisorId() == null || !conversacion.getRevisorId().equals(String.valueOf(revisorId))) {
+	        throw new RuntimeException("No autorizado: este revisor no está asignado a esta conversación");
+	    }
+	    
+	    // 3. Marcar todos los mensajes del alumno como leídos
+	    int mensajesActualizados = mensajeRepository.marcarMensajesAlumnoComoLeidos(conversacionId);
+	    
+	    System.out.println("✅ Marcados " + mensajesActualizados + " mensajes del alumno como leídos en conversación " + conversacionId);
+	    
+	    return mensajesActualizados;
+	}
+	
 	/*Contadores Dashboard*/
 	public QhDashboardResumenDto obtenerResumenDashboard () {
 		QhDashboardResumenDto resumen = new QhDashboardResumenDto();
@@ -251,6 +272,19 @@ public class QhService {
 	    resumen.setResueltos(conversacionRepository.countByEstado("RESUELTO"));
 	    resumen.setUrgentes(conversacionRepository.countByUrgenteTrue());    
 	    return resumen;
+	}
+	
+	/* Obtener conversaciones para el dashboard de un profesor específico */
+	public List<QhDto> obtenerConversacionesDashboardPorRevisor(
+	        String estado, String tarjeta, Boolean urgente, String revisorId) {
+	    
+	    // Obtener conversaciones PENDIENTES (sin asignar) + las asignadas a este profesor
+	    List<QhConversacionEntity> conversaciones = 
+	        conversacionRepository.findPendientesYAsignadasARevisor(estado, tarjeta, urgente, revisorId);
+	    
+	    return conversaciones.stream()
+	        .map(QhDto::fromEntityToDto)
+	        .collect(Collectors.toList());
 	}
 	
 }

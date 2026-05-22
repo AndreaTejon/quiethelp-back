@@ -82,7 +82,8 @@ public class QhDto {
 		// 4. ASIGNAR AMBOS AL DTO
 		dto.setEmisor(emisorDto);
 		dto.setConversacion(conversacionDto);
-		
+		dto.setToken(entity.getToken());
+
 		return dto;
 	}
 }
