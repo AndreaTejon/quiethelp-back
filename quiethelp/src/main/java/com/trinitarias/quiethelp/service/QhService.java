@@ -39,6 +39,7 @@ import com.trinitarias.quiethelp.entity.QhMensajeEntity;
 import com.trinitarias.quiethelp.repository.QhConversacionRepository;
 import com.trinitarias.quiethelp.repository.QhMensajeRepository;
 
+
 @Service
 public class QhService {
 
@@ -76,14 +77,13 @@ public class QhService {
 	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
 	    
 	    // 3. Enviar a N8N
-	    CompletableFuture.runAsync(() -> {
-	        try {
-	            sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
-	            
-	        } catch (Exception e) {
-	            System.err.println("Error al anonimizar: " + e.getMessage());
-	        }
-	    });
+	    try {
+	        sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
+	        
+	    } catch (Exception e) {
+	        System.err.println("Error al anonimizar: " + e.getMessage());
+	        throw new RuntimeException("Error al anonimizar el mensaje. Inténtalo de nuevo.");
+	    }
 	    
 	    return QhDto.fromEntityToDto(guardada);
 	}
@@ -98,7 +98,11 @@ public class QhService {
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 		
-		restTemplate.postForObject(n8nUrl, request, String.class);
+		String response = restTemplate.postForObject(n8nUrl, request, String.class);
+
+		if (response == null) {
+			throw new RuntimeException("N8N no respondió");
+		}
 	}
 	
 	/* Obtener conversaciones por token del alumno (solo PENDIENTE y EN_REVISION) */
@@ -197,24 +201,13 @@ public class QhService {
 	    QhMensajeEntity guardado = mensajeRepository.save(mensaje);
 	    
 	    // Enviar a N8N
-	    CompletableFuture.runAsync(() -> {
-	        try {
-	            Map<String, Object> payload = new HashMap<>();
-	            payload.put("mensajeId", guardado.getId());
-	            payload.put("conversacionId", id);
-	            payload.put("contenidoOriginal", contenido);
-	            
-	            HttpHeaders headers = new HttpHeaders();
-	            headers.setContentType(MediaType.APPLICATION_JSON);
-	            
-	            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-	            
-	            restTemplate.postForObject(n8nUrl, request, String.class);
-	            
-	        } catch (Exception e) {
-	            System.err.println("Error al anonimizar respuesta: " + e.getMessage());
-	        }
-	    });
+	    try {
+	        sendN8NMethod(contenido, conversacion, guardado);
+	        
+	    } catch (Exception e) {
+	        System.err.println("Error al anonimizar respuesta: " + e.getMessage());
+	        throw new RuntimeException("Error al anonimizar la respuesta. Inténtalo de nuevo.");
+	    }
 	    
 	    return QhDto.fromEntityToDto(conversacion);
 	}

@@ -95,8 +95,7 @@ public class QhController {
             Map<String, Object> response = new HashMap<>();
             response.put("status", "error");
             response.put("mensaje", "Error al crear la conversación: " + e.getMessage());
-            // 500 INTERNAL SERVER ERROR: error inesperado en el servidor
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
         }
     }
 
@@ -370,7 +369,7 @@ public class QhController {
             
             return ResponseEntity.ok(conversacion);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(Map.of("error", e.getMessage()));
         }
     }
