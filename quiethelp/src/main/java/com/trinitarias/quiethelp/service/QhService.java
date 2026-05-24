@@ -287,4 +287,18 @@ public class QhService {
 	        .collect(Collectors.toList());
 	}
 	
+	//PARA MENSAJE ANONIMO
+	
+		@Transactional
+		public QhDto actualizarMensajeAnonimizado(Long mensajeId, String contenidoAnonimizado) {
+		    QhMensajeEntity mensaje = mensajeRepository.findById(mensajeId)
+		            .orElseThrow(() -> new RuntimeException("Mensaje no encontrado con id: " + mensajeId));
+
+		    mensaje.setContenido(contenidoAnonimizado);
+
+		    QhMensajeEntity actualizado = mensajeRepository.save(mensaje);
+
+		    return QhDto.fromEntityToDto(actualizado.getConversacion());
+		}
+
 }

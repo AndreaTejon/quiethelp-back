@@ -406,4 +406,27 @@ public class QhController {
         
         return ResponseEntity.ok(conversacionesDto);
     }
+    
+    // PARA ANONIMIZAR MENSAJE
+    
+    @PatchMapping("/mensajes/{mensajeId}/anonimizar")
+    public ResponseEntity<?> actualizarMensajeAnonimizado(
+            @PathVariable Long mensajeId,
+            @RequestBody Map<String, String> body) {
+
+        String contenidoAnonimizado = body.get("contenidoAnonimizado");
+
+        if (contenidoAnonimizado == null || contenidoAnonimizado.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "contenidoAnonimizado es obligatorio"));
+        }
+
+        try {
+            QhDto conversacion = qhService.actualizarMensajeAnonimizado(mensajeId, contenidoAnonimizado);
+            return ResponseEntity.ok(conversacion);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        }
+}
 }
