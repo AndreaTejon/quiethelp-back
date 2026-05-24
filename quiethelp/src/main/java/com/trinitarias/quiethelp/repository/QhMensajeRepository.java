@@ -13,6 +13,9 @@ public interface QhMensajeRepository extends JpaRepository<QhMensajeEntity, Long
     // Buscar mensajes por conversación
     List<QhMensajeEntity> findByConversacionId(Long conversacionId);
     
+    // Buscar mensajes por conversación en orden para blockchain
+    List<QhMensajeEntity> findByConversacionIdOrderById(Long conversacionId);
+    
     // Contar mensajes no leídos en una conversación
     long countByConversacionIdAndLeidoFalse(Long conversacionId);
     

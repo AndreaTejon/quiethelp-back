@@ -69,14 +69,22 @@ public class QhService {
 	    
 	    System.out.println("📨 Mensaje recibido: '" + textoMensaje + "'");
 	    
-	    // 2. Si NO es validación, guardar TODO normal
+	    // 2. Guardar conversación
 	    QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto);
 	    QhConversacionEntity guardada = conversacionRepository.save(conversacion);
 	    
+	    // 3. Guardar mensaje (sin hash aún)
 	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
 	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
 	    
-	    // 3. Enviar a N8N
+	    // 🆕 4. Calcular y asignar hashes (después de tener el ID)
+	    String hashAnterior = "0"; // Es el primer mensaje
+	    mensajeGuardado.setHashAnterior(hashAnterior);
+	    String hashActual = mensajeGuardado.calcularHash();
+	    mensajeGuardado.setHashActual(hashActual);
+	    mensajeRepository.save(mensajeGuardado); // Actualizar con hashes
+	    
+	    // 5. Enviar a N8N (ya es síncrono, espera respuesta)
 	    try {
 	        sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
 	        
@@ -87,7 +95,7 @@ public class QhService {
 	    
 	    return QhDto.fromEntityToDto(guardada);
 	}
-
+	
 	private void sendN8NMethod(String textoMensaje, QhConversacionEntity guardada, QhMensajeEntity mensajeGuardado) {
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("mensajeId", mensajeGuardado.getId());
@@ -154,56 +162,70 @@ public class QhService {
 		return QhDto.fromEntityToDto(actualizada);
 	}
 	
-	/*Responder una conversación*/
 	@Transactional
 	public QhDto responderConversacion(Long id, String contenido, String revisorId, String revisorNombre) {
-		QhConversacionEntity conversacion = conversacionRepository.findById(id).orElseThrow(() -> new RuntimeException("Conversacion no encontrada con id: " + id));
-		//Mensaje profesor
-		QhMensajeEntity mensaje = new QhMensajeEntity();
-		mensaje.setConversacion(conversacion);
-		mensaje.setEmisor("profesor");
-		mensaje.setContenido(contenido);
-		mensaje.setFecha(LocalDateTime.now().format(formatter));
-		mensaje.setLeido(false);
-		
-		mensajeRepository.save(mensaje);
-		
-		if("PENDIENTE".equals(conversacion.getEstado())) { //Si está "PENDIENTE" pasa a "EN_REVISION"
-			conversacion.setEstado("EN_REVISION");
-			conversacion.setRevisorId(revisorId);
-			conversacion.setRevisorNombre(revisorNombre);
-			conversacion.setFechaAsignacion(LocalDateTime.now().format(formatter));
-			conversacionRepository.save(conversacion);
-		}
-		
-		return QhDto.fromEntityToDto(conversacion);
+	    QhConversacionEntity conversacion = conversacionRepository.findById(id)
+	        .orElseThrow(() -> new RuntimeException("Conversacion no encontrada con id: " + id));
+	    
+	    // Crear mensaje del profesor
+	    QhMensajeEntity mensaje = new QhMensajeEntity();
+	    mensaje.setConversacion(conversacion);
+	    mensaje.setEmisor("profesor");
+	    mensaje.setContenido(contenido);
+	    mensaje.setFecha(LocalDateTime.now().format(formatter));
+	    mensaje.setLeido(false);
+	    
+	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
+	    
+	    // Calcular y asignar hashes
+	    String hashAnterior = obtenerUltimoHash(conversacion.getId());
+	    mensajeGuardado.setHashAnterior(hashAnterior);
+	    String hashActual = mensajeGuardado.calcularHash();
+	    mensajeGuardado.setHashActual(hashActual);
+	    mensajeRepository.save(mensajeGuardado);
+	    
+	    // Actualizar estado si estaba PENDIENTE
+	    if("PENDIENTE".equals(conversacion.getEstado())) {
+	        conversacion.setEstado("EN_REVISION");
+	        conversacion.setRevisorId(revisorId);
+	        conversacion.setRevisorNombre(revisorNombre);
+	        conversacion.setFechaAsignacion(LocalDateTime.now().format(formatter));
+	        conversacionRepository.save(conversacion);
+	    }
+	    
+	    return QhDto.fromEntityToDto(conversacion);
 	}
-	
 	
 	//Respuesta alumno
 	@Transactional
 	public QhDto alumnoResponde(Long id, String contenido, String token) {
-	    QhConversacionEntity conversacion = conversacionRepository.findById(id).orElseThrow(() -> new RuntimeException("Conversación no encontrada"));
+	    QhConversacionEntity conversacion = conversacionRepository.findById(id)
+	        .orElseThrow(() -> new RuntimeException("Conversación no encontrada"));
 	   
-	    // Validar token --> identificación
 	    if (!supabaseClient.validarToken(token)) {
 	        throw new RuntimeException("Token inválido");
 	    }
 	    
-	    // Crear mensaje del ALUMNO (se anonimizará)
+	    // Crear mensaje del alumno
 	    QhMensajeEntity mensaje = new QhMensajeEntity();
 	    mensaje.setConversacion(conversacion);
-	    mensaje.setEmisor("alumno");  // Para el JSON
+	    mensaje.setEmisor("alumno");
 	    mensaje.setContenido(contenido);
 	    mensaje.setFecha(LocalDateTime.now().format(formatter));
-	    mensaje.setLeido(false);  // IMPORTANTE: el profesor no lo ha leído aún
+	    mensaje.setLeido(false);
 	    
-	    QhMensajeEntity guardado = mensajeRepository.save(mensaje);
+	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
+	    
+	    // Calcular y asignar hashes
+	    String hashAnterior = obtenerUltimoHash(conversacion.getId());
+	    mensajeGuardado.setHashAnterior(hashAnterior);
+	    String hashActual = mensajeGuardado.calcularHash();
+	    mensajeGuardado.setHashActual(hashActual);
+	    mensajeRepository.save(mensajeGuardado);
 	    
 	    // Enviar a N8N
 	    try {
-	        sendN8NMethod(contenido, conversacion, guardado);
-	        
+	        sendN8NMethod(contenido, conversacion, mensajeGuardado);
 	    } catch (Exception e) {
 	        System.err.println("Error al anonimizar respuesta: " + e.getMessage());
 	        throw new RuntimeException("Error al anonimizar la respuesta. Inténtalo de nuevo.");
@@ -280,18 +302,74 @@ public class QhService {
 	        .collect(Collectors.toList());
 	}
 	
-	//PARA MENSAJE ANONIMO
+	// PARA MENSAJE ANONIMO
+	@Transactional
+	public QhDto actualizarMensajeAnonimizado(Long mensajeId, String contenidoAnonimizado) {
+		QhMensajeEntity mensaje = mensajeRepository.findById(mensajeId)
+				.orElseThrow(() -> new RuntimeException("Mensaje no encontrado con id: " + mensajeId));
+
+		mensaje.setContenido(contenidoAnonimizado);
+
+		QhMensajeEntity actualizado = mensajeRepository.save(mensaje);
+
+		return QhDto.fromEntityToDto(actualizado.getConversacion());
+	}
+
+	// Método auxiliar para obtener el hash del último mensaje de una conversación
+	private String obtenerUltimoHash(Long conversacionId) {
+	    List<QhMensajeEntity> mensajes = mensajeRepository.findByConversacionIdOrderById(conversacionId);
+	    if (mensajes.isEmpty()) {
+	        return "0"; // Primer mensaje
+	    }
+	    return mensajes.get(mensajes.size() - 1).getHashActual();
+	}
 	
-		@Transactional
-		public QhDto actualizarMensajeAnonimizado(Long mensajeId, String contenidoAnonimizado) {
-		    QhMensajeEntity mensaje = mensajeRepository.findById(mensajeId)
-		            .orElseThrow(() -> new RuntimeException("Mensaje no encontrado con id: " + mensajeId));
-
-		    mensaje.setContenido(contenidoAnonimizado);
-
-		    QhMensajeEntity actualizado = mensajeRepository.save(mensaje);
-
-		    return QhDto.fromEntityToDto(actualizado.getConversacion());
-		}
+	/* Verificar la integridad de la cadena de bloques de una conversación */
+	public boolean verificarIntegridadCadena(Long conversacionId) {
+	    // Obtener todos los mensajes de la conversación en orden
+	    List<QhMensajeEntity> mensajes = mensajeRepository.findByConversacionIdOrderById(conversacionId);
+	    
+	    if (mensajes.isEmpty()) {
+	        return true; // No hay mensajes, cadena vacía es válida
+	    }
+	    
+	    // Verificar primer mensaje (hash anterior debe ser "0")
+	    QhMensajeEntity primero = mensajes.get(0);
+	    if (!"0".equals(primero.getHashAnterior())) {
+	        System.out.println("Cadena rota: El primer mensaje debería tener hashAnterior='0'");
+	        return false;
+	    }
+	    
+	    // Verificar que el hashActual del primer mensaje es correcto
+	    String hashCalculadoPrimero = primero.calcularHash();
+	    if (!hashCalculadoPrimero.equals(primero.getHashActual())) {
+	        System.out.println("Cadena rota: El hash del primer mensaje no coincide");
+	        return false;
+	    }
+	    
+	    // Verificar el resto de la cadena
+	    for (int i = 1; i < mensajes.size(); i++) {
+	        QhMensajeEntity actual = mensajes.get(i);
+	        QhMensajeEntity anterior = mensajes.get(i - 1);
+	        
+	        // Verificar que el hashAnterior del actual coincide con el hashActual del anterior
+	        if (!actual.getHashAnterior().equals(anterior.getHashActual())) {
+	            System.out.println("Cadena rota: El mensaje " + actual.getId() + 
+	                               " no está enlazado correctamente");
+	            return false;
+	        }
+	        
+	        // Verificar que el hashActual del actual es correcto
+	        String hashCalculado = actual.calcularHash();
+	        if (!hashCalculado.equals(actual.getHashActual())) {
+	            System.out.println("Cadena rota: El hash del mensaje " + actual.getId() + 
+	                               " no coincide (el mensaje fue manipulado)");
+	            return false;
+	        }
+	    }
+	    
+	    System.out.println("Cadena de bloques verificada correctamente para conversación " + conversacionId);
+	    return true;
+	}
 
 }

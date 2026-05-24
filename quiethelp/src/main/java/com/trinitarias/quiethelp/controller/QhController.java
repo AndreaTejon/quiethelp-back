@@ -395,37 +395,60 @@ public class QhController {
                     .body(Map.of("error", "Token inválido"));
         }
         
-        // 3. Obtener conversaciones del alumno (solo PENDIENTE y EN_REVISION)
-        List<QhConversacionEntity> conversaciones = qhService.obtenerConversacionesPorToken(token);
-        
-        // 4. Convertir a DTO
-        List<QhDto> conversacionesDto = conversaciones.stream()
-                .map(QhDto::fromEntityToDto)
-                .collect(Collectors.toList());
-        
-        return ResponseEntity.ok(conversacionesDto);
-    }
-    
-    // PARA ANONIMIZAR MENSAJE
-    
-    @PatchMapping("/mensajes/{mensajeId}/anonimizar")
-    public ResponseEntity<?> actualizarMensajeAnonimizado(
-            @PathVariable Long mensajeId,
-            @RequestBody Map<String, String> body) {
+		// 3. Obtener conversaciones del alumno (solo PENDIENTE y EN_REVISION)
+		List<QhConversacionEntity> conversaciones = qhService.obtenerConversacionesPorToken(token);
 
-        String contenidoAnonimizado = body.get("contenidoAnonimizado");
+		// 4. Convertir a DTO
+		List<QhDto> conversacionesDto = conversaciones.stream().map(QhDto::fromEntityToDto)
+				.collect(Collectors.toList());
 
-        if (contenidoAnonimizado == null || contenidoAnonimizado.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "contenidoAnonimizado es obligatorio"));
-        }
+		return ResponseEntity.ok(conversacionesDto);
+	}
 
-        try {
-            QhDto conversacion = qhService.actualizarMensajeAnonimizado(mensajeId, contenidoAnonimizado);
-            return ResponseEntity.ok(conversacion);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", e.getMessage()));
-        }
-}
+	// PARA ANONIMIZAR MENSAJE
+
+	@PatchMapping("/mensajes/{mensajeId}/anonimizar")
+	public ResponseEntity<?> actualizarMensajeAnonimizado(@PathVariable Long mensajeId,
+			@RequestBody Map<String, String> body) {
+
+		String contenidoAnonimizado = body.get("contenidoAnonimizado");
+
+		if (contenidoAnonimizado == null || contenidoAnonimizado.trim().isEmpty()) {
+			return ResponseEntity.badRequest().body(Map.of("error", "contenidoAnonimizado es obligatorio"));
+		}
+
+		try {
+			QhDto conversacion = qhService.actualizarMensajeAnonimizado(mensajeId, contenidoAnonimizado);
+			return ResponseEntity.ok(conversacion);
+		} catch (RuntimeException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+		}
+	}
+	
+	/*
+	 * ============================================ ENDPOINT PARA VERIFICAR
+	 * INTEGRIDAD DE LA CADENA DE BLOQUES GET
+	 * /api/conversaciones/{id}/verificar-cadena Devuelve: { valida: true, mensaje:
+	 * "Cadena verificada correctamente" }
+	 * ============================================
+	 */
+	@GetMapping("/{id}/verificar-cadena")
+	public ResponseEntity<?> verificarCadena(@PathVariable Long id) {
+		try {
+			// Verificar que la conversación existe
+			qhService.obtenerConversacionCompleta(id);
+
+			boolean esValida = qhService.verificarIntegridadCadena(id);
+
+			if (esValida) {
+				return ResponseEntity
+						.ok(Map.of("valida", true, "mensaje", "Cadena de bloques verificada correctamente"));
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+						Map.of("valida", false, "mensaje", "La cadena de bloques ha sido comprometida o modificada"));
+			}
+		} catch (RuntimeException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+		}
+	}
 }
