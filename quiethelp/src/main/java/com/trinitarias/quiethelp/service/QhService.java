@@ -55,6 +55,9 @@ public class QhService {
 	@Value("${n8n.webhook.url}")
 	private String n8nUrl;
 	
+	@Value("${ia.url}")
+	private String iaUrl;
+	
     @Autowired
     private SupabaseClient supabaseClient;
 	
@@ -67,11 +70,41 @@ public class QhService {
 	    QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
 	    String textoMensaje = primerMensajeDto.getMensaje();
 	    
+	    //llamada a la ia
+	    
+	    Map<String, String> iaPayload = new HashMap<>();
+	    iaPayload.put("text", textoMensaje);
+
+	    HttpHeaders iaHeaders = new HttpHeaders();
+	    iaHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+	    HttpEntity<Map<String, String>> iaRequest =
+	            new HttpEntity<>(iaPayload, iaHeaders);
+	    
+	    @SuppressWarnings("unchecked")
+	    Map<String, Object> iaResponse = restTemplate.postForObject(
+	            iaUrl,
+	            iaRequest,
+	            Map.class
+	    );
+
+	    boolean urgente = false;
+
+	    if (iaResponse != null && iaResponse.get("urgent") != null) {
+	        urgente = (Boolean) iaResponse.get("urgent");
+	    }
+
+	    System.out.println("🚨 Urgente: " + urgente);
+	    
+	   
 	    System.out.println("📨 Mensaje recibido: '" + textoMensaje + "'");
 	    
 	    // 2. Guardar conversación
 	    QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto);
 	    QhConversacionEntity guardada = conversacionRepository.save(conversacion);
+	    
+	    guardada.setUrgente(urgente);
+	    conversacionRepository.save(guardada);
 	    
 	    // 3. Guardar mensaje (sin hash aún)
 	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);

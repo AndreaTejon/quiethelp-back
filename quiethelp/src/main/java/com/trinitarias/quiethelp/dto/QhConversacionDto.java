@@ -3,25 +3,37 @@ package com.trinitarias.quiethelp.dto;
 import java.util.List;
 
 public class QhConversacionDto {
+
 	private String id;
-	
-	private String estado;       // pendiente, revision, resuelto
-	
+
+	private String estado; // pendiente, revision, resuelto
+
 	private String revisorId;
-	
+
 	private String revisorNombre;
-	
+
 	private String fechaInicio;
-	
+
 	private String fechaAsignacion;
-	
+
 	private String fechaResolucion;
-	
-	private List<QhMensajeDto> mensajes;  // Los mensajes
-	
-	public QhConversacionDto() { }
-	
-	public QhConversacionDto (String id, String estado, String revisorId, String revisorNombre, String fechaInicio, String fechaAsignacion, String fechaResolucion) {
+
+	private boolean urgente;
+
+	private List<QhMensajeDto> mensajes; // Los mensajes
+
+	public QhConversacionDto() {
+	}
+
+	public QhConversacionDto(
+			String id,
+			String estado,
+			String revisorId,
+			String revisorNombre,
+			String fechaInicio,
+			String fechaAsignacion,
+			String fechaResolucion) {
+
 		this.id = id;
 		this.estado = estado;
 		this.revisorId = revisorId;
@@ -87,6 +99,14 @@ public class QhConversacionDto {
 		this.fechaResolucion = fechaResolucion;
 	}
 
+	public boolean isUrgente() {
+		return urgente;
+	}
+
+	public void setUrgente(boolean urgente) {
+		this.urgente = urgente;
+	}
+
 	public List<QhMensajeDto> getMensajes() {
 		return mensajes;
 	}
@@ -94,6 +114,4 @@ public class QhConversacionDto {
 	public void setMensajes(List<QhMensajeDto> mensajes) {
 		this.mensajes = mensajes;
 	}
-	
-	
 }

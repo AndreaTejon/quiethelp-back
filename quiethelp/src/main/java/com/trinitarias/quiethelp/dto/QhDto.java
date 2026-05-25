@@ -61,6 +61,8 @@ public class QhDto {
 		conversacionDto.setFechaInicio(entity.getFechaRecibido());
 		conversacionDto.setFechaAsignacion(entity.getFechaAsignacion());
 		conversacionDto.setFechaResolucion(entity.getFechaResolucion());
+
+		conversacionDto.setUrgente(entity.isUrgente());
 		
 		// 3. MAPEAR MENSAJES (si existen)
 		if (entity.getMensajes() != null && !entity.getMensajes().isEmpty()) {
