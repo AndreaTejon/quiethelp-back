@@ -94,7 +94,7 @@ public class QhController {
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("status", "error");
-            response.put("mensaje", "Error al crear la conversación: " + e.getMessage());
+            response.put("mensaje", "No se pudo enviar tu mensaje en este momento. Por favor, inténtalo de nuevo en unos segundos.");
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
         }
     }
