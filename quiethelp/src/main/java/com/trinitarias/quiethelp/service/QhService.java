@@ -7,10 +7,8 @@ import java.time.format.DateTimeFormatter;
 //Colecciones
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.HashMap;
-
-//Concurrencia
-import java.util.concurrent.CompletableFuture;
 
 //Streams
 import java.util.stream.Collectors;
@@ -29,7 +27,7 @@ import org.springframework.http.MediaType;
 
 // BBDD 
 import com.trinitarias.quiethelp.components.SupabaseClient;
-
+import com.trinitarias.quiethelp.dto.QhConversacionDto;
 //Dtos y Entities
 import com.trinitarias.quiethelp.dto.QhDashboardResumenDto;
 import com.trinitarias.quiethelp.dto.QhDto;
@@ -70,33 +68,24 @@ public class QhService {
 	    QhMensajeDto primerMensajeDto = dto.getConversacion().getMensajes().get(0);
 	    String textoMensaje = primerMensajeDto.getMensaje();
 	    
-	    //llamada a la ia
-	    
+	    // Llamada a la IA para detectar urgente
 	    Map<String, String> iaPayload = new HashMap<>();
 	    iaPayload.put("text", textoMensaje);
 
 	    HttpHeaders iaHeaders = new HttpHeaders();
 	    iaHeaders.setContentType(MediaType.APPLICATION_JSON);
 
-	    HttpEntity<Map<String, String>> iaRequest =
-	            new HttpEntity<>(iaPayload, iaHeaders);
+	    HttpEntity<Map<String, String>> iaRequest = new HttpEntity<>(iaPayload, iaHeaders);
 	    
 	    @SuppressWarnings("unchecked")
-	    Map<String, Object> iaResponse = restTemplate.postForObject(
-	            iaUrl,
-	            iaRequest,
-	            Map.class
-	    );
+	    Map<String, Object> iaResponse = restTemplate.postForObject(iaUrl, iaRequest, Map.class);
 
 	    boolean urgente = false;
-
 	    if (iaResponse != null && iaResponse.get("urgent") != null) {
 	        urgente = (Boolean) iaResponse.get("urgent");
 	    }
 
 	    System.out.println("🚨 Urgente: " + urgente);
-	    
-	   
 	    System.out.println("📨 Mensaje recibido: '" + textoMensaje + "'");
 	    
 	    // 2. Guardar conversación
@@ -106,21 +95,13 @@ public class QhService {
 	    guardada.setUrgente(urgente);
 	    conversacionRepository.save(guardada);
 	    
-	    // 3. Guardar mensaje (sin hash aún)
+	    // 3. Guardar mensaje (SIN hash aún)
 	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
 	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
 	    
-	    // 🆕 4. Calcular y asignar hashes (después de tener el ID)
-	    String hashAnterior = "0"; // Es el primer mensaje
-	    mensajeGuardado.setHashAnterior(hashAnterior);
-	    String hashActual = mensajeGuardado.calcularHash();
-	    mensajeGuardado.setHashActual(hashActual);
-	    mensajeRepository.save(mensajeGuardado); // Actualizar con hashes
-	    
-	    // 5. Enviar a N8N (ya es síncrono, espera respuesta)
+	    // 4. Enviar a N8N (espera respuesta, N8N llamará a actualizarMensajeAnonimizado)
 	    try {
 	        sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
-	        
 	    } catch (Exception e) {
 	        System.err.println("Error al anonimizar: " + e.getMessage());
 	        throw new RuntimeException("Error al anonimizar el mensaje. Inténtalo de nuevo.");
@@ -153,29 +134,42 @@ public class QhService {
 	    return conversacionRepository.findByTokenAndEstadoNot(token, "RESUELTO");
 	}
 	
-	
-	/*Obtener conversacion -> dashboard profesor -filtros incluidos*/
+	/* Obtener conversacion -> dashboard profesor -filtros incluidos*/
 	public List<QhDto> obtenerConversacionesDashboard(String estado, String tarjeta, Boolean urgente) {
-	    List<QhConversacionEntity> conversaciones =
-	            conversacionRepository.filtrarConversaciones(estado, tarjeta, urgente);
+	    List<QhConversacionEntity> conversaciones = conversacionRepository.filtrarConversaciones(estado, tarjeta, urgente);
 
 	    return conversaciones.stream().map(conv -> {
 	        QhDto dto = QhDto.fromEntityToDto(conv);
-
+	        
+	        // Añadir la verificación de blockchain (sin sobrecargar)
+	        // Usamos el método con caché para no recalcular cada vez
+	        boolean cadenaVerificada = isCadenaVerificada(conv.getId());
+	        
+	        // Asegurar que el DTO de conversación existe
 	        if (dto.getConversacion() == null) {
+	            QhConversacionDto convDto = new QhConversacionDto();
+	            convDto.setCadenaVerificada(cadenaVerificada);
+	            dto.setConversacion(convDto);
 	            return dto;
 	        }
-
+	        
+	        // Añadir el campo de verificación al DTO
+	        dto.getConversacion().setCadenaVerificada(cadenaVerificada);
+	        
+	        // Limpiar mensajes para el dashboard (solo queremos la vista previa)
 	        if (dto.getConversacion().getMensajes() == null ||
 	                dto.getConversacion().getMensajes().isEmpty()) {
 	            dto.getConversacion().setMensajes(null);
-	            return dto;
+	        } else {
+	            // Opcional: mantener solo el primer mensaje para la vista previa
+	            List<QhMensajeDto> soloPrimero = new ArrayList<>();
+	            soloPrimero.add(dto.getConversacion().getMensajes().get(0));
+	            dto.getConversacion().setMensajes(soloPrimero);
 	        }
-
+	        
 	        return dto;
 	    }).collect(Collectors.toList());
 	}
-	
 	/*Conversación completa*/
 	public QhDto obtenerConversacionCompleta(Long id) {
 		QhConversacionEntity conversacion = conversacionRepository.findById(id).orElseThrow(() -> new RuntimeException("Conversacion no encontrada con id: " + id));
@@ -249,14 +243,7 @@ public class QhService {
 	    
 	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
 	    
-	    // Calcular y asignar hashes
-	    String hashAnterior = obtenerUltimoHash(conversacion.getId());
-	    mensajeGuardado.setHashAnterior(hashAnterior);
-	    String hashActual = mensajeGuardado.calcularHash();
-	    mensajeGuardado.setHashActual(hashActual);
-	    mensajeRepository.save(mensajeGuardado);
-	    
-	    // Enviar a N8N
+	    // Enviar a N8N (N8N llamará a actualizarMensajeAnonimizado después)
 	    try {
 	        sendN8NMethod(contenido, conversacion, mensajeGuardado);
 	    } catch (Exception e) {
@@ -338,14 +325,29 @@ public class QhService {
 	// PARA MENSAJE ANONIMO
 	@Transactional
 	public QhDto actualizarMensajeAnonimizado(Long mensajeId, String contenidoAnonimizado) {
-		QhMensajeEntity mensaje = mensajeRepository.findById(mensajeId)
-				.orElseThrow(() -> new RuntimeException("Mensaje no encontrado con id: " + mensajeId));
+	    QhMensajeEntity mensaje = mensajeRepository.findById(mensajeId)
+	        .orElseThrow(() -> new RuntimeException("Mensaje no encontrado con id: " + mensajeId));
 
-		mensaje.setContenido(contenidoAnonimizado);
-
-		QhMensajeEntity actualizado = mensajeRepository.save(mensaje);
-
-		return QhDto.fromEntityToDto(actualizado.getConversacion());
+	    // Actualizar contenido con el texto anonimizado
+	    mensaje.setContenido(contenidoAnonimizado);
+	    
+	    //Ccalcular el hash con el texto anonimizado
+	    String hashAnterior = obtenerUltimoHash(mensaje.getConversacion().getId());
+	    mensaje.setHashAnterior(hashAnterior);
+	    String hashActual = mensaje.calcularHash();
+	    mensaje.setHashActual(hashActual);
+	    
+	    QhMensajeEntity actualizado = mensajeRepository.save(mensaje);
+	    
+	    // Marcar la conversación como verificada
+	    QhConversacionEntity conversacion = mensaje.getConversacion();
+	    conversacion.setCadenaVerificada(true);
+	    conversacion.setUltimaVerificacion(LocalDateTime.now());
+	    conversacionRepository.save(conversacion);
+	    
+	    System.out.println("✅ Mensaje " + mensajeId + " anonimizado y hash calculado: " + hashActual);
+	    
+	    return QhDto.fromEntityToDto(actualizado.getConversacion());
 	}
 
 	// Método auxiliar para obtener el hash del último mensaje de una conversación
@@ -403,6 +405,28 @@ public class QhService {
 	    
 	    System.out.println("Cadena de bloques verificada correctamente para conversación " + conversacionId);
 	    return true;
+	}
+	
+	/* Verificar si la cadena de una conversación es válida (con caché de 5 minutos) */
+	@Transactional
+	public boolean isCadenaVerificada(Long conversacionId) {
+	    QhConversacionEntity conversacion = conversacionRepository.findById(conversacionId)
+	        .orElseThrow(() -> new RuntimeException("Conversación no encontrada"));
+	    
+	    // 🔥 Si se verificó hace menos de 5 minutos, devolver el caché (no recalcular)
+	    if (conversacion.isCadenaVerificada() && 
+	        conversacion.getUltimaVerificacion() != null &&
+	        conversacion.getUltimaVerificacion().isAfter(LocalDateTime.now().minusMinutes(5))) {
+	        return true;
+	    }
+	    
+	    // Si no está verificada o pasó más de 5 minutos, recalcular
+	    boolean esValida = verificarIntegridadCadena(conversacionId);
+	    conversacion.setCadenaVerificada(esValida);
+	    conversacion.setUltimaVerificacion(LocalDateTime.now());
+	    conversacionRepository.save(conversacion);
+	    
+	    return esValida;
 	}
 
 }

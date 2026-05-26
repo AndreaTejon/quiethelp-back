@@ -61,6 +61,7 @@ public class QhDto {
 		conversacionDto.setFechaInicio(entity.getFechaRecibido());
 		conversacionDto.setFechaAsignacion(entity.getFechaAsignacion());
 		conversacionDto.setFechaResolucion(entity.getFechaResolucion());
+		conversacionDto.setCadenaVerificada(entity.isCadenaVerificada());
 
 		conversacionDto.setUrgente(entity.isUrgente());
 		

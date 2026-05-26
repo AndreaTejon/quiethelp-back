@@ -45,6 +45,8 @@ public class QhConversacionEntity {
     private String fechaRecibido;    // La pone el backend al crear
     private String fechaAsignacion;  // Cuando profesor toma el caso
     private String fechaResolucion;  // Cuando se resuelve
+    private boolean cadenaVerificada;
+    private LocalDateTime ultimaVerificacion;
 
     // Token del alumno (para identificar sus conversaciones)
     @Column(name = "token", nullable = false)
@@ -168,6 +170,22 @@ public class QhConversacionEntity {
 
     public void setToken(String token) {
         this.token = token;
+    }
+    
+    public boolean isCadenaVerificada() {
+        return cadenaVerificada;
+    }
+
+    public void setCadenaVerificada(boolean cadenaVerificada) {
+        this.cadenaVerificada = cadenaVerificada;
+    }
+
+    public LocalDateTime getUltimaVerificacion() {
+        return ultimaVerificacion;
+    }
+
+    public void setUltimaVerificacion(LocalDateTime ultimaVerificacion) {
+        this.ultimaVerificacion = ultimaVerificacion;
     }
     
     public static QhConversacionEntity fromDtoToEntity(QhDto dto) {

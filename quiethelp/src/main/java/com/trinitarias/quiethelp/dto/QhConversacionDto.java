@@ -19,6 +19,8 @@ public class QhConversacionDto {
 	private String fechaResolucion;
 
 	private boolean urgente;
+	
+	private boolean cadenaVerificada;
 
 	private List<QhMensajeDto> mensajes; // Los mensajes
 
@@ -113,5 +115,13 @@ public class QhConversacionDto {
 
 	public void setMensajes(List<QhMensajeDto> mensajes) {
 		this.mensajes = mensajes;
+	}
+	
+	public boolean isCadenaVerificada() {
+	    return cadenaVerificada;
+	}
+
+	public void setCadenaVerificada(boolean cadenaVerificada) {
+	    this.cadenaVerificada = cadenaVerificada;
 	}
 }
