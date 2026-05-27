@@ -36,6 +36,7 @@ import com.trinitarias.quiethelp.entity.QhConversacionEntity;
 import com.trinitarias.quiethelp.entity.QhMensajeEntity;
 import com.trinitarias.quiethelp.repository.QhConversacionRepository;
 import com.trinitarias.quiethelp.repository.QhMensajeRepository;
+import com.trinitarias.quiethelp.dto.QhConversacionDto;
 
 
 @Service
@@ -77,16 +78,25 @@ public class QhService {
 
 	    HttpEntity<Map<String, String>> iaRequest = new HttpEntity<>(iaPayload, iaHeaders);
 	    
-	    @SuppressWarnings("unchecked")
-	    Map<String, Object> iaResponse = restTemplate.postForObject(iaUrl, iaRequest, Map.class);
-
 	    boolean urgente = false;
-	    if (iaResponse != null && iaResponse.get("urgent") != null) {
-	        urgente = (Boolean) iaResponse.get("urgent");
+
+	    try {
+	        @SuppressWarnings("unchecked")
+	        Map<String, Object> iaResponse = restTemplate.postForObject(iaUrl, iaRequest, Map.class);
+
+	        if (iaResponse != null && iaResponse.get("urgent") != null) {
+	            urgente = Boolean.parseBoolean(iaResponse.get("urgent").toString());
+	        }
+
+	        System.out.println("Urgente: " + urgente);
+
+	    } catch (Exception e) {
+	        System.err.println("⚠️ IA falló, continúo sin marcar urgente: " + e.getMessage());
+	        urgente = false;
 	    }
 
-	    System.out.println("🚨 Urgente: " + urgente);
-	    System.out.println("📨 Mensaje recibido: '" + textoMensaje + "'");
+	    System.out.println("Urgente: " + urgente);
+	    System.out.println("Mensaje recibido: '" + textoMensaje + "'");
 	    
 	    // 2. Guardar conversación
 	    QhConversacionEntity conversacion = QhConversacionEntity.fromDtoToEntity(dto);
@@ -101,6 +111,7 @@ public class QhService {
 	    
 	    // 4. Enviar a N8N (espera respuesta, N8N llamará a actualizarMensajeAnonimizado)
 	    try {
+	    	System.out.println("Enviando a N8N: " + n8nUrl);
 	        sendN8NMethod(textoMensaje, guardada, mensajeGuardado);
 	    } catch (Exception e) {
 	        System.err.println("Error al anonimizar: " + e.getMessage());
@@ -413,7 +424,7 @@ public class QhService {
 	    QhConversacionEntity conversacion = conversacionRepository.findById(conversacionId)
 	        .orElseThrow(() -> new RuntimeException("Conversación no encontrada"));
 	    
-	    // 🔥 Si se verificó hace menos de 5 minutos, devolver el caché (no recalcular)
+	    // Si se verificó hace menos de 5 minutos, devolver el caché (no recalcular)
 	    if (conversacion.isCadenaVerificada() && 
 	        conversacion.getUltimaVerificacion() != null &&
 	        conversacion.getUltimaVerificacion().isAfter(LocalDateTime.now().minusMinutes(5))) {
