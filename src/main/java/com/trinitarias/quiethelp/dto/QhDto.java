@@ -72,7 +72,11 @@ public class QhDto {
 					QhMensajeDto msgDto = new QhMensajeDto();
 					msgDto.setId(String.valueOf(msg.getId()));
 					msgDto.setEmisor(msg.getEmisor());
-					msgDto.setMensaje(msg.getContenido());
+					 if (msg.getHashActual() == null) {
+				            msgDto.setMensaje("Procesando...");
+				        } else {
+				            msgDto.setMensaje(msg.getContenido());
+				        }
 					msgDto.setLeido(msg.isLeido());
 					msgDto.setFecha(msg.getFecha());
 					return msgDto;
