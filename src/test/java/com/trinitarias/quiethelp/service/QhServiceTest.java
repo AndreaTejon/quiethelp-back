@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -108,7 +109,7 @@ class QhServiceTest {
     // ==================== CREAR CONVERSACIÓN (con IA y n8n) ====================
     
     @Test
-    void crearConversacion_Exito_SinUrgente_RetornaQhDto() {
+    void crearConversacionExitoSinUrgenteRetornaQhDto() {
 		ReflectionTestUtils.setField(qhService, "iaUrl", "https://quiethelp-ia-production.up.railway.app/predict");
 		ReflectionTestUtils.setField(qhService, "n8nUrl", "http://187.124.160.195:32768/webhook/quiethelp-anonimizar");
 		Map<String, Object> iaResponse = new HashMap<>();
@@ -133,7 +134,7 @@ class QhServiceTest {
     }
 
     @Test
-    void crearConversacion_IA_DetectaUrgente_GuardaComoUrgente() {
+    void crearConversacion_IADetectaUrgenteGuardaComoUrgente() {
     	ReflectionTestUtils.setField(qhService, "iaUrl", "https://quiethelp-ia-production.up.railway.app/predict");
     	ReflectionTestUtils.setField(qhService, "n8nUrl", "http://187.124.160.195:32768/webhook/quiethelp-anonimizar");
         Map<String, Object> iaResponse = new HashMap<>();
@@ -155,7 +156,7 @@ class QhServiceTest {
     }
 
     @Test
-    void crearConversacion_N8NFalla_LanzaExcepcion() {
+    void crearConversacionN8NFallaLanzaExcepcion() {
         // Given - Mock IA ok, pero n8n falla
         Map<String, Object> iaResponse = new HashMap<>();
         iaResponse.put("urgent", false);
@@ -177,7 +178,7 @@ class QhServiceTest {
     // ==================== OBTENER CONVERSACIONES POR TOKEN ====================
     
     @Test
-    void obtenerConversacionesPorToken_Exito_RetornaLista() {
+    void obtenerConversacionesPorTokenExitoRetornaLista() {
         List<QhConversacionEntity> conversaciones = List.of(testConversacion);
         when(conversacionRepository.findByTokenAndEstadoNot(eq(TEST_TOKEN), eq("RESUELTO")))
             .thenReturn(conversaciones);
@@ -190,7 +191,7 @@ class QhServiceTest {
     }
 
     @Test
-    void obtenerConversacionesPorToken_SinConversaciones_RetornaListaVacia() {
+    void obtenerConversacionesPorTokenSinConversacionesRetornaListaVacia() {
         when(conversacionRepository.findByTokenAndEstadoNot(eq(TEST_TOKEN), eq("RESUELTO")))
             .thenReturn(Collections.emptyList());
 
@@ -204,7 +205,7 @@ class QhServiceTest {
     // ==================== OBTENER CONVERSACIÓN COMPLETA ====================
     
     @Test
-    void obtenerConversacionCompleta_Exito_RetornaQhDto() {
+    void obtenerConversacionCompletaExitoRetornaQhDto() {
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
 
         QhDto resultado = qhService.obtenerConversacionCompleta(TEST_ID);
@@ -214,7 +215,7 @@ class QhServiceTest {
     }
 
     @Test
-    void obtenerConversacionCompleta_NoExistente_LanzaExcepcion() {
+    void obtenerConversacionCompletaNoExistenteLanzaExcepcion() {
         when(conversacionRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -225,7 +226,7 @@ class QhServiceTest {
     // ==================== ASIGNAR CONVERSACIÓN ====================
     
     @Test
-    void asignarConversacion_Exito_RetornaQhDto() {
+    void asignarConversacionExitoRetornaQhDto() {
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
         when(conversacionRepository.save(any(QhConversacionEntity.class))).thenReturn(testConversacion);
 
@@ -239,7 +240,7 @@ class QhServiceTest {
     }
 
     @Test
-    void asignarConversacion_NoExistente_LanzaExcepcion() {
+    void asignarConversacionNoExistenteLanzaExcepcion() {
         when(conversacionRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -250,7 +251,7 @@ class QhServiceTest {
     // ==================== RESPONDER CONVERSACIÓN ====================
     
     @Test
-    void responderConversacion_Exito_RetornaQhDto() {
+    void responderConversacionExitoRetornaQhDto() {
         testConversacion.setEstado("PENDIENTE");
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
         when(mensajeRepository.save(any(QhMensajeEntity.class))).thenReturn(testMensaje);
@@ -264,7 +265,7 @@ class QhServiceTest {
     }
 
     @Test
-    void responderConversacion_NoExistente_LanzaExcepcion() {
+    void responderConversacionNoExistenteLanzaExcepcion() {
         when(conversacionRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -274,7 +275,7 @@ class QhServiceTest {
 
     // ==================== ALUMNO RESPONDE (con n8n) ====================
     @Test
-    void alumnoResponde_TokenValido_RetornaQhDto() throws Exception {
+    void alumnoRespondeTokenValidoRetornaQhDto() throws Exception {
 		ReflectionTestUtils.setField(qhService, "n8nUrl", "http://187.124.160.195:32768/webhook/quiethelp-anonimizar");
 
 		when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
@@ -290,7 +291,7 @@ class QhServiceTest {
     }
 
     @Test
-    void alumnoResponde_TokenInvalido_LanzaExcepcion() {
+    void alumnoRespondeTokenInvalidoLanzaExcepcion() {
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
         when(supabaseClient.validarToken("INVALIDO")).thenReturn(false);
 
@@ -300,7 +301,7 @@ class QhServiceTest {
     }
 
     @Test
-    void alumnoResponde_ConversacionNoExistente_LanzaExcepcion() {
+    void alumnoRespondeConversacionNoExistenteLanzaExcepcion() {
         when(conversacionRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -309,7 +310,7 @@ class QhServiceTest {
     }
 
     @Test
-    void alumnoResponde_N8NFalla_LanzaExcepcion() {
+    void alumnoRespondeN8NFallaLanzaExcepcion() {
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
         when(supabaseClient.validarToken(TEST_TOKEN)).thenReturn(true);
         when(mensajeRepository.save(any(QhMensajeEntity.class))).thenReturn(testMensaje);
@@ -324,7 +325,7 @@ class QhServiceTest {
     // ==================== CAMBIAR ESTADO ====================
     
     @Test
-    void cambiarEstadoConversacion_Exito_RetornaQhDto() {
+    void cambiarEstadoConversacionExitoRetornaQhDto() {
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
         when(conversacionRepository.save(any())).thenReturn(testConversacion);
 
@@ -336,7 +337,7 @@ class QhServiceTest {
     }
 
     @Test
-    void cambiarEstadoConversacion_NoExistente_LanzaExcepcion() {
+    void cambiarEstadoConversacionNoExistenteLanzaExcepcion() {
         when(conversacionRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -347,7 +348,7 @@ class QhServiceTest {
     // ==================== OBTENER RESUMEN DASHBOARD ====================
     
     @Test
-    void obtenerResumenDashboard_Exito_RetornaDto() {
+    void obtenerResumenDashboardExitoRetornaDto() {
         when(conversacionRepository.countByEstado("PENDIENTE")).thenReturn(5L);
         when(conversacionRepository.countByEstado("EN_REVISION")).thenReturn(3L);
         when(conversacionRepository.countByEstado("RESUELTO")).thenReturn(10L);
@@ -370,7 +371,7 @@ class QhServiceTest {
     // ==================== VERIFICAR INTEGRIDAD CADENA (Blockchain) ====================
     
     @Test
-    void verificarIntegridadCadena_ConversacionVacia_RetornaTrue() {
+    void verificarIntegridadCadenaConversacionVaciaRetornaTrue() {
         when(mensajeRepository.findByConversacionIdOrderById(TEST_ID)).thenReturn(Collections.emptyList());
 
         boolean resultado = qhService.verificarIntegridadCadena(TEST_ID);
@@ -380,7 +381,7 @@ class QhServiceTest {
     }
 
     @Test
-    void verificarIntegridadCadena_PrimerMensajeHashIncorrecto_RetornaFalse() {
+    void verificarIntegridadCadenaPrimerMensajeHashIncorrectoRetornaFalse() {
         testMensaje.setHashAnterior("123");  // Debería ser "0"
         when(mensajeRepository.findByConversacionIdOrderById(TEST_ID)).thenReturn(List.of(testMensaje));
 
@@ -392,7 +393,7 @@ class QhServiceTest {
     // ==================== ACTUALIZAR MENSAJE ANONIMIZADO ====================
     
     @Test
-    void actualizarMensajeAnonimizado_Exito_RetornaQhDto() {
+    void actualizarMensajeAnonimizadoExitoRetornaQhDto() {
         when(mensajeRepository.findById(TEST_ID)).thenReturn(Optional.of(testMensaje));
         when(mensajeRepository.save(any())).thenReturn(testMensaje);
 
@@ -403,7 +404,7 @@ class QhServiceTest {
     }
 
     @Test
-    void actualizarMensajeAnonimizado_MensajeNoExistente_LanzaExcepcion() {
+    void actualizarMensajeAnonimizadoMensajeNoExistenteLanzaExcepcion() {
         when(mensajeRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> {
@@ -414,7 +415,7 @@ class QhServiceTest {
     // ==================== OBTENER CONVERSACIONES DASHBOARD POR REVISOR ====================
     
     @Test
-    void obtenerConversacionesDashboardPorRevisor_Exito_RetornaLista() {
+    void obtenerConversacionesDashboardPorRevisorExitoRetornaLista() {
         List<QhConversacionEntity> conversaciones = List.of(testConversacion);
         when(conversacionRepository.findPendientesYAsignadasARevisor(any(), any(), any(), any()))
             .thenReturn(conversaciones);
@@ -428,7 +429,7 @@ class QhServiceTest {
     }
 
     @Test
-    void obtenerConversacionesDashboardPorRevisor_SinConversaciones_RetornaListaVacia() {
+    void obtenerConversacionesDashboardPorRevisorSinConversacionesRetornaListaVacia() {
         when(conversacionRepository.findPendientesYAsignadasARevisor(any(), any(), any(), any()))
             .thenReturn(Collections.emptyList());
 
@@ -442,7 +443,7 @@ class QhServiceTest {
     // ==================== MARCAR MENSAJES COMO LEÍDOS ====================
     
     @Test
-    void marcarMensajesAlumnoComoLeidos_Exito_RetornaNumero() {
+    void marcarMensajesAlumnoComoLeidosExitoRetornaNumero() {
         Long revisorIdLong = 123L;
         testConversacion.setRevisorId(String.valueOf(revisorIdLong));  // "123"
         
@@ -456,7 +457,7 @@ class QhServiceTest {
     }
 
     @Test
-    void marcarMensajesAlumnoComoLeidos_NoAutorizado_LanzaExcepcion() {
+    void marcarMensajesAlumnoComoLeidosNoAutorizadoLanzaExcepcion() {
         testConversacion.setRevisorId("otro-id-diferente");
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
 
@@ -466,7 +467,7 @@ class QhServiceTest {
     }
 
     @Test
-    void marcarMensajesAlumnoComoLeidos_ConversacionSinRevisor_LanzaExcepcion() {
+    void marcarMensajesAlumnoComoLeidosConversacionSinRevisorLanzaExcepcion() {
         // La conversación no tiene revisor asignado
         testConversacion.setRevisorId(null);
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
@@ -480,7 +481,7 @@ class QhServiceTest {
     // Este método se prueba a través de verificarIntegridadCadena y responderConversacion
     
     @Test
-    void isCadenaVerificada_CacheExpirado_Recalcula() {
+    void isCadenaVerificadaCacheExpiradoRecalcula() {
         testConversacion.setCadenaVerificada(false);
         when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
         when(mensajeRepository.findByConversacionIdOrderById(TEST_ID)).thenReturn(Collections.emptyList());
@@ -491,4 +492,216 @@ class QhServiceTest {
         assertTrue(resultado);
         verify(conversacionRepository, times(1)).save(any());
     }
+    
+ // ==================== TEST FALTANTES PARA VALIDATOR Y BLOCKCHAIN ====================
+
+    @Test
+    void verificarIntegridadCadenaUnSoloMensajeValidoRetornaTrue() {
+        testMensaje.setHashAnterior("0");
+        testMensaje.setHashActual("hashCalculado");
+        
+        when(mensajeRepository.findByConversacionIdOrderById(TEST_ID))
+                .thenReturn(List.of(testMensaje));
+        
+        qhService.verificarIntegridadCadena(TEST_ID);
+        
+        verify(mensajeRepository, times(1)).findByConversacionIdOrderById(TEST_ID);
+    }
+
+    @Test
+    void verificarIntegridadCadenaDosMensajesEnlazadosRetornaTrue() {
+        QhMensajeEntity primero = new QhMensajeEntity();
+        primero.setId(1L);
+        primero.setHashAnterior("0");
+        primero.setHashActual("hash1");
+        
+        QhMensajeEntity segundo = new QhMensajeEntity();
+        segundo.setId(2L);
+        segundo.setHashAnterior("hash1");
+        segundo.setHashActual("hash2");
+        
+        when(mensajeRepository.findByConversacionIdOrderById(TEST_ID))
+                .thenReturn(List.of(primero, segundo));
+        
+        qhService.verificarIntegridadCadena(TEST_ID);
+        
+        verify(mensajeRepository, times(1)).findByConversacionIdOrderById(TEST_ID);
+    }
+    
+    
+ // ==================== TESTS PARA MEJORAR COBERTURA DE RAMAS ====================
+
+    @Test
+    void verificarIntegridadCadenaCadenaRotaRetornaFalse() {
+        testMensaje.setHashAnterior("0");
+        testMensaje.setHashActual("hashFalso"); // Hash incorrecto
+        
+        when(mensajeRepository.findByConversacionIdOrderById(TEST_ID))
+            .thenReturn(List.of(testMensaje));
+
+        boolean resultado = qhService.verificarIntegridadCadena(TEST_ID);
+
+        assertFalse(resultado);
+    }
+
+    @Test
+    void verificarIntegridadCadenaEnlaceIncorrectoRetornaFalse() {
+        QhMensajeEntity primero = new QhMensajeEntity();
+        primero.setId(1L);
+        primero.setHashAnterior("0");
+        primero.setHashActual("hash1");
+        
+        QhMensajeEntity segundo = new QhMensajeEntity();
+        segundo.setId(2L);
+        segundo.setHashAnterior("hashIncorrecto"); // No coincide con hash1
+        segundo.setHashActual("hash2");
+        
+        when(mensajeRepository.findByConversacionIdOrderById(TEST_ID))
+            .thenReturn(List.of(primero, segundo));
+
+        boolean resultado = qhService.verificarIntegridadCadena(TEST_ID);
+
+        assertFalse(resultado);
+    }
+    
+    @Test
+    void crearConversacionConversacionRepositorySavePrimeroFallaLanzaExcepcion() {
+        ReflectionTestUtils.setField(qhService, "iaUrl", IA_URL);
+        ReflectionTestUtils.setField(qhService, "n8nUrl", N8N_URL);
+        
+        Map<String, Object> iaResponse = new HashMap<>();
+        iaResponse.put("urgent", false);
+        
+        when(restTemplate.postForObject(eq(IA_URL), any(), eq(Map.class)))
+            .thenReturn(iaResponse);
+        when(conversacionRepository.save(any(QhConversacionEntity.class)))
+            .thenThrow(new RuntimeException("Error de base de datos"));
+
+        assertThrows(RuntimeException.class, () -> {
+            qhService.crearConversacion(testDto);
+        });
+    }
+
+    @Test
+    void obtenerConversacionesDashboardPorRevisorConFiltrosValidosRetornaLista() {
+        List<QhConversacionEntity> conversaciones = List.of(testConversacion);
+        when(conversacionRepository.findPendientesYAsignadasARevisor(eq("PENDIENTE"), eq("Emocional"), eq(true), eq(TEST_REVISOR_ID)))
+            .thenReturn(conversaciones);
+
+        List<QhDto> resultado = qhService.obtenerConversacionesDashboardPorRevisor(
+            "PENDIENTE", "Emocional", true, TEST_REVISOR_ID);
+
+        assertNotNull(resultado);
+        assertFalse(resultado.isEmpty());
+        verify(conversacionRepository, times(1))
+            .findPendientesYAsignadasARevisor(eq("PENDIENTE"), eq("Emocional"), eq(true), eq(TEST_REVISOR_ID));
+    }
+
+    @Test
+    void obtenerConversacionesDashboardPorRevisorConEstadoNullRetornaLista() {
+        List<QhConversacionEntity> conversaciones = List.of(testConversacion);
+        when(conversacionRepository.findPendientesYAsignadasARevisor(eq(null), eq(null), eq(null), eq(TEST_REVISOR_ID)))
+            .thenReturn(conversaciones);
+
+        List<QhDto> resultado = qhService.obtenerConversacionesDashboardPorRevisor(
+            null, null, null, TEST_REVISOR_ID);
+
+        assertNotNull(resultado);
+        verify(conversacionRepository, times(1))
+            .findPendientesYAsignadasARevisor(eq(null), eq(null), eq(null), eq(TEST_REVISOR_ID));
+    }
+
+    @Test
+    void isCadenaVerificadaConversacionYaVerificadaYRecienteRetornaTrue() {
+        testConversacion.setCadenaVerificada(true);
+        testConversacion.setUltimaVerificacion(java.time.LocalDateTime.now().minusMinutes(2));
+        when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
+
+        boolean resultado = qhService.isCadenaVerificada(TEST_ID);
+
+        assertTrue(resultado);
+        verify(conversacionRepository, never()).save(any());
+        verify(mensajeRepository, never()).findByConversacionIdOrderById(anyLong());
+    }
+
+    @Test
+    void isCadenaVerificadaConversacionVerificadaAntiguaRecalcula() {
+        testConversacion.setCadenaVerificada(true);
+        testConversacion.setUltimaVerificacion(java.time.LocalDateTime.now().minusMinutes(10));
+        when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
+        when(mensajeRepository.findByConversacionIdOrderById(TEST_ID)).thenReturn(Collections.emptyList());
+        when(conversacionRepository.save(any())).thenReturn(testConversacion);
+
+        boolean resultado = qhService.isCadenaVerificada(TEST_ID);
+
+        assertTrue(resultado);
+        verify(conversacionRepository, times(1)).save(any());
+    }
+
+    @Test
+    void actualizarMensajeAnonimizadoCalculaHashYActualizaRetornaQhDto() {
+        String contenidoAnonimizado = "Texto anonimizado de prueba";
+        testMensaje.setContenido(contenidoAnonimizado);
+        
+        when(mensajeRepository.findById(TEST_ID)).thenReturn(Optional.of(testMensaje));
+        when(mensajeRepository.save(any(QhMensajeEntity.class))).thenReturn(testMensaje);
+        when(mensajeRepository.findByConversacionIdOrderById(anyLong())).thenReturn(List.of(testMensaje));
+
+        QhDto resultado = qhService.actualizarMensajeAnonimizado(TEST_ID, contenidoAnonimizado);
+
+        assertNotNull(resultado);
+        verify(mensajeRepository, times(1)).save(testMensaje);
+    }
+
+    @Test
+    void cambiarEstadoConversacionConEstadoResuelto_asignaFechaResolucion() {
+        when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
+        when(conversacionRepository.save(any())).thenReturn(testConversacion);
+
+        QhDto resultado = qhService.cambiarEstadoConversacion(TEST_ID, "RESUELTO");
+
+        assertNotNull(resultado);
+        assertEquals("RESUELTO", testConversacion.getEstado());
+        assertNotNull(testConversacion.getFechaResolucion());
+        verify(conversacionRepository, times(1)).save(testConversacion);
+    }
+
+    @Test
+    void responderConversacionConversacionPendienteCambiaEstadoYAsigna() {
+        testConversacion.setEstado("PENDIENTE");
+        when(conversacionRepository.findById(TEST_ID)).thenReturn(Optional.of(testConversacion));
+        when(mensajeRepository.save(any(QhMensajeEntity.class))).thenReturn(testMensaje);
+        when(conversacionRepository.save(any(QhConversacionEntity.class))).thenReturn(testConversacion);
+        when(mensajeRepository.findByConversacionIdOrderById(anyLong())).thenReturn(List.of(testMensaje));
+
+        QhDto resultado = qhService.responderConversacion(TEST_ID, "Respuesta test", TEST_REVISOR_ID, TEST_REVISOR_NOMBRE);
+
+        assertNotNull(resultado);
+        assertEquals("EN_REVISION", testConversacion.getEstado());
+        assertEquals(TEST_REVISOR_ID, testConversacion.getRevisorId());
+        verify(conversacionRepository, times(1)).save(any());
+    }
+
+    @Test
+    void marcarMensajesComoLeidosConEmisorProfesorLlamaMetodoCorrecto() {
+        Long conversacionId = TEST_ID;
+        String emisor = "profesor";
+        
+        qhService.marcarMensajesComoLeidos(conversacionId, emisor);
+        
+        verify(mensajeRepository, times(1)).marcarMensajesProfesorComoLeidos(conversacionId);
+        verify(mensajeRepository, never()).marcarMensajesAlumnoComoLeidos(anyLong());
+    }
+
+    @Test
+    void marcarMensajesComoLeidosConEmisorAlumnoLlamaMetodoCorrecto() {
+        Long conversacionId = TEST_ID;
+        String emisor = "alumno";
+        
+        qhService.marcarMensajesComoLeidos(conversacionId, emisor);
+        
+        verify(mensajeRepository, times(1)).marcarMensajesAlumnoComoLeidos(conversacionId);
+        verify(mensajeRepository, never()).marcarMensajesProfesorComoLeidos(anyLong());
+    }
+
 }

@@ -36,7 +36,6 @@ import com.trinitarias.quiethelp.entity.QhConversacionEntity;
 import com.trinitarias.quiethelp.entity.QhMensajeEntity;
 import com.trinitarias.quiethelp.repository.QhConversacionRepository;
 import com.trinitarias.quiethelp.repository.QhMensajeRepository;
-import com.trinitarias.quiethelp.dto.QhConversacionDto;
 
 
 @Service
