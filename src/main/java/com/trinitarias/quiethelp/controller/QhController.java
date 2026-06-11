@@ -71,13 +71,13 @@ public class QhController {
 
         // 5. Detectar si es mensaje de validación
         String textoMensaje = dto.getConversacion().getMensajes().get(0).getMensaje();
-        System.out.println("🔍 CONTROLLER - mensaje: '" + textoMensaje + "'");
+        System.out.println("CONTROLLER - mensaje: '" + textoMensaje + "'");
         boolean esMensajeValidacion = textoMensaje.toLowerCase().trim().equals("validación") || 
                 textoMensaje.toLowerCase().trim().equals("validacion");
 
         if (esMensajeValidacion) {
             // No guardamos nada, pero devolvemos 201 CREATED para que el frontend navegue
-            System.out.println("📌 Mensaje de validación detectado - No se guarda en BD");
+            System.out.println("Mensaje de validación detectado - No se guarda en BD");
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                         "valido", true,
