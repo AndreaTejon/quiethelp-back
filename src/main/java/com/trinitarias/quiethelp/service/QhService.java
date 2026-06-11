@@ -90,7 +90,7 @@ public class QhService {
 	        System.out.println("Urgente: " + urgente);
 
 	    } catch (Exception e) {
-	        System.err.println("⚠️ IA falló, continúo sin marcar urgente: " + e.getMessage());
+	        System.err.println("IA falló, continúo sin marcar urgente: " + e.getMessage());
 	        urgente = false;
 	    }
 
@@ -104,7 +104,7 @@ public class QhService {
 	    guardada.setUrgente(urgente);
 	    conversacionRepository.save(guardada);
 	    
-	    // 3. Guardar mensaje (SIN hash aún)
+	    // 3. Guardar mensaje (Sin hash aún)
 	    QhMensajeEntity mensaje = QhMensajeEntity.fromDtoToEntity(primerMensajeDto, guardada);
 	    QhMensajeEntity mensajeGuardado = mensajeRepository.save(mensaje);
 	    
@@ -171,7 +171,7 @@ public class QhService {
 	                dto.getConversacion().getMensajes().isEmpty()) {
 	            dto.getConversacion().setMensajes(null);
 	        } else {
-	            // Opcional: mantener solo el primer mensaje para la vista previa
+	            // Mantener solo el primer mensaje para la vista previa, ahorra consumo
 	            List<QhMensajeDto> soloPrimero = new ArrayList<>();
 	            soloPrimero.add(dto.getConversacion().getMensajes().get(0));
 	            dto.getConversacion().setMensajes(soloPrimero);
@@ -289,7 +289,7 @@ public class QhService {
 		}
 	}
 	
-	/* NUEVO MÉTODO: Marcar mensajes del ALUMNO como leídos por el PROFESOR */
+	/* NMarcar mensajes del ALUMNO como leídos por el PROFESOR */
 	@Transactional
 	public int marcarMensajesAlumnoComoLeidos(Long conversacionId, Long revisorId) {
 	    // 1. Verificar que la conversación existe
@@ -304,7 +304,7 @@ public class QhService {
 	    // 3. Marcar todos los mensajes del alumno como leídos
 	    int mensajesActualizados = mensajeRepository.marcarMensajesAlumnoComoLeidos(conversacionId);
 	    
-	    System.out.println("✅ Marcados " + mensajesActualizados + " mensajes del alumno como leídos en conversación " + conversacionId);
+	    System.out.println("Marcados " + mensajesActualizados + " mensajes del alumno como leídos en conversación " + conversacionId);
 	    
 	    return mensajesActualizados;
 	}
@@ -355,7 +355,7 @@ public class QhService {
 	    conversacion.setUltimaVerificacion(LocalDateTime.now());
 	    conversacionRepository.save(conversacion);
 	    
-	    System.out.println("✅ Mensaje " + mensajeId + " anonimizado y hash calculado: " + hashActual);
+	    System.out.println("Mensaje " + mensajeId + " anonimizado y hash calculado: " + hashActual);
 	    
 	    return QhDto.fromEntityToDto(actualizado.getConversacion());
 	}
