@@ -28,7 +28,7 @@ public class QhConversacionEntity {
     private String grupo;
     private String tarjeta;        // Bullying, Académico, Emocional
     private boolean urgente;
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     
     // Primer mensaje (el texto inicial)
     @Column(length = 2000)

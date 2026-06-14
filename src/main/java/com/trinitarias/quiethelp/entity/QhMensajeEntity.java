@@ -109,7 +109,7 @@ public class QhMensajeEntity {
     }
     
     public static QhMensajeEntity fromDtoToEntity(QhMensajeDto dto, QhConversacionEntity conversacion) {
-    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
         QhMensajeEntity entity = new QhMensajeEntity();
         entity.setConversacion(conversacion);
         entity.setEmisor(dto.getEmisor() != null ? dto.getEmisor() : "alumno");
