@@ -59,7 +59,7 @@ public class QhService {
     @Autowired
     private SupabaseClient supabaseClient;
 	
-	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 	
 	/* Crear conversación -- mensaje de alumno*/
 	@Transactional
